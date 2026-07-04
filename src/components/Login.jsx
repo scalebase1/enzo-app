@@ -1,0 +1,87 @@
+import { useState } from 'react'
+import { supabase } from '../supabaseClient.js'
+import { c, card, btn, input, font } from '../ui.js'
+
+export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [forgot, setForgot] = useState(false)
+
+  async function login() {
+    setBusy(true)
+    setStatus('Logger ind …')
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    setBusy(false)
+    if (error) setStatus('Login-fejl: ' + error.message)
+    // ved succes overtager onAuthStateChange i App
+  }
+
+  async function sendReset() {
+    if (!email.trim() || !email.includes('@')) {
+      setStatus('Skriv din email først.')
+      return
+    }
+    setBusy(true)
+    setStatus('Sender reset-link …')
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin,
+    })
+    setBusy(false)
+    setStatus(error ? 'Fejl: ' + error.message : 'Hvis emailen findes, er et reset-link på vej. Tjek din indbakke.')
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, fontFamily: font }}>
+      <div style={{ width: 380, maxWidth: 'calc(100vw - 32px)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: c.ink }}>Enzo</div>
+          <div style={{ fontSize: 13, color: c.sub }}>Casa Food · driftssystem</div>
+        </div>
+        <div style={card}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>{forgot ? 'Nulstil adgangskode' : 'Log ind'}</div>
+          <input
+            style={input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email"
+            type="email"
+            autoComplete="username"
+            onKeyDown={(e) => e.key === 'Enter' && !forgot && login()}
+          />
+          {!forgot && (
+            <input
+              style={input}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="adgangskode"
+              autoComplete="current-password"
+              onKeyDown={(e) => e.key === 'Enter' && login()}
+            />
+          )}
+          {!forgot ? (
+            <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={login} disabled={busy}>
+              Log ind
+            </button>
+          ) : (
+            <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={sendReset} disabled={busy}>
+              Send reset-link
+            </button>
+          )}
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setForgot(!forgot); setStatus('') }}
+              style={{ color: c.blue, fontSize: 13, textDecoration: 'none' }}
+            >
+              {forgot ? '← Tilbage til login' : 'Glemt adgangskode?'}
+            </a>
+          </div>
+          {status && <div style={{ marginTop: 12, fontSize: 13, color: status.includes('fejl') || status.includes('Fejl') ? c.red : c.sub }}>{status}</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
