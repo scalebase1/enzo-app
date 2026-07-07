@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './supabaseClient.js'
+import { supabase, authLandingType } from './supabaseClient.js'
 import Login from './components/Login.jsx'
+import SetPassword from './components/SetPassword.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Overblik from './sections/Overblik.jsx'
+import Medarbejdere from './sections/Medarbejdere.jsx'
 import Placeholder from './sections/Placeholder.jsx'
 import { c, font, btn } from './ui.js'
 
@@ -18,7 +20,7 @@ const ALL_SECTIONS = [
 
 function FullMsg({ children }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: c.sub }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: c.sub, textAlign: 'center', padding: 24 }}>
       {children}
     </div>
   )
@@ -35,8 +37,8 @@ function NoAccess({ email }) {
 }
 
 export default function App() {
-  const [session, setSession] = useState(undefined) // undefined=indlæser, null=ikke logget ind, obj=logget ind
-  const [role, setRole] = useState(undefined) // undefined=bestemmer, 'admin'|'medarbejder'|'none'
+  const [session, setSession] = useState(undefined)
+  const [role, setRole] = useState(undefined)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -54,18 +56,17 @@ export default function App() {
     ;(async () => {
       const { data: isAdmin } = await supabase.rpc('er_admin')
       if (!alive) return
-      if (isAdmin === true) {
-        setRole('admin')
-        return
-      }
+      if (isAdmin === true) { setRole('admin'); return }
       const { data: staffId } = await supabase.rpc('aktuel_medarbejder')
       if (!alive) return
       setRole(staffId ? 'medarbejder' : 'none')
     })()
-    return () => {
-      alive = false
-    }
+    return () => { alive = false }
   }, [session])
+
+  // Recovery/invite-landing tager forrang over normal-flow (til reload efter kode-saet).
+  if (authLandingType?.error) return <FullMsg>Linket kunne ikke bruges: {authLandingType.error}</FullMsg>
+  if (authLandingType?.type) return <SetPassword type={authLandingType.type} />
 
   if (session === undefined) return <FullMsg>Indlæser …</FullMsg>
   if (!session) return <Login />
@@ -83,7 +84,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to={'/' + home} replace />} />
           <Route path="/overblik" element={adminOnly(<Overblik />)} />
-          <Route path="/medarbejdere" element={adminOnly(<Placeholder title="Medarbejdere" note="Liste + ny medarbejder + chat — bygges i en senere fase." />)} />
+          <Route path="/medarbejdere" element={adminOnly(<Medarbejdere />)} />
           <Route path="/kalender" element={<Placeholder title="Kalender" note="Google-Calendar-grade kalender med ledighed + auto-tildeling — senere fase." />} />
           <Route path="/enzo" element={adminOnly(<Placeholder title="Enzo" note="Assistent + godkendelser — senere fase." />)} />
           <Route path="/notifikationer" element={<Placeholder title="Notifikationer" note="Mail-baserede push-notifikationer — senere fase." />} />
