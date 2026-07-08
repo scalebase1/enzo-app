@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../supabaseClient.js'
-import { c, card, btn, btnGhost, monoFont, sp } from '../ui.js'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
+import { c, card, btn, btnGhost, input, monoFont, sp } from '../ui.js'
+
+const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-proxy'
 
 function StatusBadge({ status }) {
   let bg = '#E5E7EB', col = '#4B5563', txt = status || '—'
@@ -23,6 +25,120 @@ function tidspunkt(ts) {
   } catch {
     return ts
   }
+}
+
+// Chat med Enzo via enzo-proxy (edge-funktion → n8n-agent). Historik er lokal
+// state — Enzo har selv Postgres-memory paa backend-siden.
+function EnzoChat({ onSvar }) {
+  const [beskeder, setBeskeder] = useState([])
+  const [tekst, setTekst] = useState('')
+  const [venter, setVenter] = useState(false)
+  const [chatFejl, setChatFejl] = useState('')
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [beskeder, venter])
+
+  async function send() {
+    const t = tekst.trim()
+    if (!t || venter) return
+    setChatFejl(''); setTekst('')
+    setBeskeder((b) => [...b, { rolle: 'bruger', tekst: t }])
+
+    const { data: sess } = await supabase.auth.getSession()
+    const tok = sess.session?.access_token
+    if (!tok) { setChatFejl('Session udløbet — genindlæs siden.'); return }
+
+    setVenter(true)
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 30000)
+    try {
+      const res = await fetch(PROXY, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatInput: t }),
+        signal: ctrl.signal,
+      })
+      clearTimeout(timer)
+      const raw = await res.text()
+      let d = null
+      try { d = JSON.parse(raw) } catch { /* ignore */ }
+      setVenter(false)
+      if (!res.ok || !d || d.ok === false || typeof d.svar !== 'string') {
+        setChatFejl(d && d.fejl ? 'Enzo-fejl: ' + d.fejl : 'Fejlede (' + res.status + ') — prøv igen.')
+        return
+      }
+      setBeskeder((b) => [...b, { rolle: 'enzo', tekst: d.svar }])
+      onSvar?.()
+    } catch (er) {
+      clearTimeout(timer); setVenter(false)
+      setChatFejl(er && er.name === 'AbortError' ? 'Enzo svarede ikke i tide, prøv igen.' : 'Uventet fejl — prøv igen.')
+    }
+  }
+
+  const boble = (m, i) => (
+    <div key={i} style={{ display: 'flex', justifyContent: m.rolle === 'bruger' ? 'flex-end' : 'flex-start' }}>
+      <div
+        style={{
+          maxWidth: '82%',
+          padding: '9px 13px',
+          borderRadius: 14,
+          fontSize: 14,
+          lineHeight: 1.45,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'break-word',
+          ...(m.rolle === 'bruger'
+            ? { background: c.blue, color: '#fff', borderBottomRightRadius: 4 }
+            : { background: c.card, border: `1px solid ${c.line}`, color: c.text, borderBottomLeftRadius: 4 }),
+        }}
+      >
+        {m.tekst}
+      </div>
+    </div>
+  )
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
+        Chat med Enzo
+      </div>
+      <div style={{ ...card, padding: 0, display: 'flex', flexDirection: 'column', height: 480 }}>
+        <div ref={boxRef} style={{ flex: 1, overflowY: 'auto', padding: 16, background: c.bg, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {beskeder.length === 0 && !venter && (
+            <div style={{ color: c.slate2, fontSize: 13, textAlign: 'center', margin: 'auto 0' }}>
+              Skriv til Enzo — fx "Hvad sker der i denne uge?"
+            </div>
+          )}
+          {beskeder.map(boble)}
+          {venter && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ padding: '9px 13px', borderRadius: 14, fontSize: 13, color: c.sub, background: c.card, border: `1px solid ${c.line}`, borderBottomLeftRadius: 4 }}>
+                Enzo tænker …
+              </div>
+            </div>
+          )}
+        </div>
+        {chatFejl && (
+          <div style={{ padding: '8px 16px', color: c.red, fontSize: 13, borderTop: `1px solid ${c.line}` }}>{chatFejl}</div>
+        )}
+        <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: `1px solid ${c.line}` }}>
+          <input
+            style={{ ...input, marginBottom: 0, flex: 1 }}
+            value={tekst}
+            onChange={(e) => setTekst(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+            placeholder="Skriv en besked til Enzo …"
+            disabled={venter}
+          />
+          <button style={{ ...btn, opacity: venter || !tekst.trim() ? 0.6 : 1 }} onClick={send} disabled={venter || !tekst.trim()}>
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Enzo() {
@@ -80,91 +196,99 @@ export default function Enzo() {
         )}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>
-        Enzos forslag — godkend eller afvis. Godkendte handlinger eksekveres med det samme.
+        Chat med Enzo og godkend eller afvis hans forslag. Godkendte handlinger eksekveres med det samme.
       </p>
 
-      {kvittering && (
-        <div
-          style={{
-            ...card,
-            marginTop: 16,
-            fontWeight: 600,
-            fontSize: 14,
-            ...(kvittering.kind === 'ok' && { background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534' }),
-            ...(kvittering.kind === 'fejl' && { background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }),
-            ...(kvittering.kind === 'neutral' && { color: c.slate2 }),
-          }}
-        >
-          {kvittering.tekst}
-        </div>
-      )}
-
-      {loading && <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter forslag …</div>}
-      {err && <div style={{ ...card, marginTop: 16, color: c.red }}>RPC-fejl: {err}</div>}
-
-      {!loading && !err && forslag && (
-        <>
-          {ventende.length === 0 && (
-            <div style={{ ...card, marginTop: 16, color: c.sub }}>Ingen forslag afventer godkendelse.</div>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+          {kvittering && (
+            <div
+              style={{
+                ...card,
+                marginTop: 16,
+                fontWeight: 600,
+                fontSize: 14,
+                ...(kvittering.kind === 'ok' && { background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534' }),
+                ...(kvittering.kind === 'fejl' && { background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }),
+                ...(kvittering.kind === 'neutral' && { color: c.slate2 }),
+              }}
+            >
+              {kvittering.tekst}
+            </div>
           )}
 
-          {ventende.map((f) => (
-            <div key={f.id} style={{ ...card, marginTop: 16, borderLeft: `4px solid ${c.blue}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <span style={{ fontFamily: monoFont, fontSize: 11, color: c.slate2, background: '#EEF2F7', padding: '2px 8px', borderRadius: 6 }}>{f.aktion}</span>
-                <span style={{ fontSize: 12, color: c.sub }}>{tidspunkt(f.oprettet)}</span>
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{f.menneske_tekst}</div>
-              {f.begrundelse && (
-                <div style={{ fontSize: 13, color: c.sub, marginTop: 6 }}>{f.begrundelse}</div>
-              )}
-              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <button
-                  style={{ ...btn, background: c.green, opacity: busyId ? 0.6 : 1 }}
-                  disabled={!!busyId}
-                  onClick={() => afgoer(f, 'godkendt')}
-                >
-                  {busyId === f.id ? 'Arbejder …' : 'Godkend'}
-                </button>
-                <button
-                  style={{ ...btnGhost, opacity: busyId ? 0.6 : 1 }}
-                  disabled={!!busyId}
-                  onClick={() => afgoer(f, 'afvist')}
-                >
-                  Afvis
-                </button>
-              </div>
-            </div>
-          ))}
+          {loading && <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter forslag …</div>}
+          {err && <div style={{ ...card, marginTop: 16, color: c.red }}>RPC-fejl: {err}</div>}
 
-          <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
-              Besluttet (sidste 7 dage)
-            </div>
-            {besluttede.length === 0 && (
-              <div style={{ padding: '20px 24px', border: `1.5px dashed ${c.line}`, borderRadius: 14, color: c.slate2, fontSize: 14 }}>
-                Ingen beslutninger endnu.
-              </div>
-            )}
-            {besluttede.length > 0 && (
-              <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                {besluttede.map((f, i) => (
-                  <div key={f.id} style={{ padding: '12px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', display: 'flex', alignItems: 'center', gap: sp(3) }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{f.menneske_tekst}</div>
-                      <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{tidspunkt(f.oprettet)}</div>
-                      {f.status === 'fejlet' && (
-                        <div style={{ fontSize: 12, color: c.red, marginTop: 4 }}>Fejl: {fejlTekst(f.resultat)}</div>
-                      )}
-                    </div>
-                    <StatusBadge status={f.status} />
+          {!loading && !err && forslag && (
+            <>
+              {ventende.length === 0 && (
+                <div style={{ ...card, marginTop: 16, color: c.sub }}>Ingen forslag afventer godkendelse.</div>
+              )}
+
+              {ventende.map((f) => (
+                <div key={f.id} style={{ ...card, marginTop: 16, borderLeft: `4px solid ${c.blue}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontFamily: monoFont, fontSize: 11, color: c.slate2, background: '#EEF2F7', padding: '2px 8px', borderRadius: 6 }}>{f.aktion}</span>
+                    <span style={{ fontSize: 12, color: c.sub }}>{tidspunkt(f.oprettet)}</span>
                   </div>
-                ))}
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{f.menneske_tekst}</div>
+                  {f.begrundelse && (
+                    <div style={{ fontSize: 13, color: c.sub, marginTop: 6 }}>{f.begrundelse}</div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                    <button
+                      style={{ ...btn, background: c.green, opacity: busyId ? 0.6 : 1 }}
+                      disabled={!!busyId}
+                      onClick={() => afgoer(f, 'godkendt')}
+                    >
+                      {busyId === f.id ? 'Arbejder …' : 'Godkend'}
+                    </button>
+                    <button
+                      style={{ ...btnGhost, opacity: busyId ? 0.6 : 1 }}
+                      disabled={!!busyId}
+                      onClick={() => afgoer(f, 'afvist')}
+                    >
+                      Afvis
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ marginTop: 28 }}>
+                <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
+                  Besluttet (sidste 7 dage)
+                </div>
+                {besluttede.length === 0 && (
+                  <div style={{ padding: '20px 24px', border: `1.5px dashed ${c.line}`, borderRadius: 14, color: c.slate2, fontSize: 14 }}>
+                    Ingen beslutninger endnu.
+                  </div>
+                )}
+                {besluttede.length > 0 && (
+                  <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                    {besluttede.map((f, i) => (
+                      <div key={f.id} style={{ padding: '12px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', display: 'flex', alignItems: 'center', gap: sp(3) }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>{f.menneske_tekst}</div>
+                          <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{tidspunkt(f.oprettet)}</div>
+                          {f.status === 'fejlet' && (
+                            <div style={{ fontSize: 12, color: c.red, marginTop: 4 }}>Fejl: {fejlTekst(f.resultat)}</div>
+                          )}
+                        </div>
+                        <StatusBadge status={f.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </>
-      )}
+            </>
+          )}
+        </div>
+
+        <div style={{ flex: '1 1 340px', minWidth: 320, maxWidth: 560, marginTop: 16 }}>
+          <EnzoChat onSvar={load} />
+        </div>
+      </div>
     </div>
   )
 }
