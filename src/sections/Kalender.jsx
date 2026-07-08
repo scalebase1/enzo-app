@@ -185,7 +185,19 @@ const DAEKNING = {
   delvis: { bg: '#FEF3C7', border: '#FCD34D', col: '#92400E', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' },
 }
 
-function BookingDetalje({ booking, onClose }) {
+function ShiftBadge({ status }) {
+  const map = {
+    aaben: { bg: '#FEF3C7', col: '#92400E', txt: 'åben' },
+    tildelt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'tildelt' },
+    bekraeftet: { bg: '#DCFCE7', col: '#166534', txt: 'bekræftet' },
+    byttet: { bg: '#F1F5F9', col: '#4B5563', txt: 'byttet' },
+    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' },
+  }
+  const s = map[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
+  return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
+}
+
+function BookingDetalje({ booking, onClose, onVagtChange }) {
   const start = new Date(booking.start)
   const slut = new Date(booking.slut)
   const linjer = (booking.beskrivelse || '').split('\n').filter((l) => l.trim())
@@ -194,6 +206,49 @@ function BookingDetalje({ booking, onClose }) {
   const [bemFejl, setBemFejl] = useState('')
   const [bemRes, setBemRes] = useState(null)
 
+  // Vagt-roster + tildel-styring
+  const [roster, setRoster] = useState(null)
+  const [rosterLoading, setRosterLoading] = useState(true)
+  const [rosterFejl, setRosterFejl] = useState('')
+  const [medarbejdere, setMedarbejdere] = useState([])
+  const [valgtStaff, setValgtStaff] = useState({}) // shift_id -> staff_id
+  const [vagtBusy, setVagtBusy] = useState(null)     // shift_id under handling
+  const [vagtFejl, setVagtFejl] = useState('')
+
+  const loadRoster = useCallback(async () => {
+    setRosterFejl('')
+    const { data, error } = await supabase.rpc('booking_vagter', { p_booking_id: booking.booking_id })
+    setRosterLoading(false)
+    if (error) { setRosterFejl(error.message); return }
+    if (!data || data.ok === false) { setRosterFejl(data?.fejl || 'Kunne ikke hente vagter.'); return }
+    setRoster(data.vagter || [])
+  }, [booking.booking_id])
+
+  useEffect(() => {
+    loadRoster()
+    supabase.rpc('medarbejdere_liste').then(({ data }) => {
+      if (data && data.ok !== false) setMedarbejdere(data.medarbejdere || [])
+    })
+  }, [loadRoster])
+
+  const aktive = medarbejdere.filter((m) => m.onboarding_status === 'aktiv')
+
+  async function vagtHandling(aktion, payload, shiftId) {
+    setVagtBusy(shiftId); setVagtFejl('')
+    const { data, error } = await supabase.rpc('admin_handling', { p_aktion: aktion, p_payload: payload })
+    if (error) { setVagtBusy(null); setVagtFejl('Fejl: ' + error.message); return }
+    if (!data || data.ok === false) { setVagtBusy(null); setVagtFejl(data?.fejl || 'Handlingen fejlede.'); return }
+    await loadRoster()
+    onVagtChange?.()
+    setVagtBusy(null)
+  }
+
+  function tildel(shiftId) {
+    const staffId = valgtStaff[shiftId]
+    if (!staffId) { setVagtFejl('Vælg en medarbejder først.'); return }
+    vagtHandling('vagt_tildel', { shift_id: shiftId, staff_id: staffId }, shiftId)
+  }
+
   async function bem() {
     setBemBusy(true); setBemFejl(''); setBemRes(null)
     const { data, error } = await supabase.rpc('auto_beman', { p_booking_id: booking.booking_id })
@@ -201,9 +256,12 @@ function BookingDetalje({ booking, onClose }) {
     if (error) { setBemFejl('Fejl: ' + error.message); return }
     if (!data || data.ok === false) { setBemFejl(data?.fejl || 'Kunne ikke åbne vagter.'); return }
     setBemRes(data)
+    loadRoster()
+    onVagtChange?.()
   }
 
   const d = bemRes ? (DAEKNING[bemRes.daekning] || { bg: '#F1F5F9', border: c.line, col: c.text, tekst: bemRes.daekning }) : null
+  const selectStil = { ...input, marginBottom: 0, padding: '8px 10px', flex: 1, minWidth: 0 }
 
   return (
     <Modal onClose={onClose}>
@@ -255,6 +313,57 @@ function BookingDetalje({ booking, onClose }) {
           )}
         </div>
       )}
+
+      <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
+        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Vagter</div>
+        {rosterLoading && <div style={{ color: c.sub, fontSize: 14 }}>Henter vagter …</div>}
+        {rosterFejl && <div style={{ color: c.red, fontSize: 13 }}>Fejl: {rosterFejl}</div>}
+        {!rosterLoading && !rosterFejl && roster && roster.length === 0 && (
+          <div style={{ color: c.sub, fontSize: 14 }}>Ingen vagter på denne booking endnu.</div>
+        )}
+        {!rosterLoading && !rosterFejl && roster && roster.map((v, i) => {
+          const rowStil = { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }
+          if (v.status === 'aaben') {
+            return (
+              <div key={v.shift_id} style={rowStil}>
+                <ShiftBadge status="aaben" />
+                <select
+                  style={selectStil}
+                  value={valgtStaff[v.shift_id] || ''}
+                  disabled={!!vagtBusy}
+                  onChange={(e) => setValgtStaff((s) => ({ ...s, [v.shift_id]: e.target.value }))}
+                >
+                  <option value="">Vælg medarbejder …</option>
+                  {aktive.map((m) => <option key={m.id} value={m.id}>{m.navn}</option>)}
+                </select>
+                <button style={{ ...btn, padding: '8px 12px', opacity: vagtBusy ? 0.6 : 1 }} disabled={!!vagtBusy} onClick={() => tildel(v.shift_id)}>
+                  {vagtBusy === v.shift_id ? '…' : 'Tildel'}
+                </button>
+              </div>
+            )
+          }
+          const kanStyres = v.status === 'tildelt' || v.status === 'bekraeftet'
+          return (
+            <div key={v.shift_id} style={rowStil}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{v.staff_navn || 'Ukendt'}</span>
+              </div>
+              <ShiftBadge status={v.status} />
+              {kanStyres && (
+                <>
+                  <button style={{ ...btnGhost, padding: '7px 11px', opacity: vagtBusy ? 0.6 : 1 }} disabled={!!vagtBusy} onClick={() => vagtHandling('vagt_aaben', { shift_id: v.shift_id }, v.shift_id)}>
+                    Frigør
+                  </button>
+                  <button style={{ ...btnGhost, padding: '7px 11px', color: c.red, opacity: vagtBusy ? 0.6 : 1 }} disabled={!!vagtBusy} onClick={() => vagtHandling('vagt_slet', { id: v.shift_id }, v.shift_id)}>
+                    Fjern
+                  </button>
+                </>
+              )}
+            </div>
+          )
+        })}
+        {vagtFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red }}>{vagtFejl}</div>}
+      </div>
     </Modal>
   )
 }
@@ -266,18 +375,18 @@ function AdminKalender() {
   const [cursor, setCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    let alive = true
-    setLoading(true); setErr('')
+  // Reloads roerer ikke `loading` (kun foerste hentning), saa modalen ikke flimrer.
+  const load = useCallback(() => {
+    setErr('')
     supabase.rpc('kalender_data').then(({ data, error }) => {
-      if (!alive) return
       setLoading(false)
       if (error) { setErr(error.message); return }
       if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente kalenderen.'); return }
       setData(data.bookinger || [])
     })
-    return () => { alive = false }
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   const events = useMemo(() => (data || []).map((b) => {
     const start = new Date(b.start)
@@ -309,7 +418,7 @@ function AdminKalender() {
         </>
       )}
 
-      {selected && <BookingDetalje booking={selected} onClose={() => setSelected(null)} />}
+      {selected && <BookingDetalje booking={selected} onClose={() => setSelected(null)} onVagtChange={load} />}
     </div>
   )
 }
