@@ -179,10 +179,32 @@ function BookingBadge({ status, aflyst }) {
   return <span style={{ background: bg, color: col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{txt}</span>
 }
 
+const DAEKNING = {
+  fuldt_bemandet: { bg: '#DCFCE7', border: '#86EFAC', col: '#166534', tekst: 'Fuldt bemandet — ingen åbne vagter.' },
+  vagter_aabnet: { bg: '#E8F0FE', border: '#93C5FD', col: '#1E3A8A', tekst: 'Vagter åbnet — alle nødvendige vagter er oprettet.' },
+  delvis: { bg: '#FEF3C7', border: '#FCD34D', col: '#92400E', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' },
+}
+
 function BookingDetalje({ booking, onClose }) {
   const start = new Date(booking.start)
   const slut = new Date(booking.slut)
   const linjer = (booking.beskrivelse || '').split('\n').filter((l) => l.trim())
+
+  const [bemBusy, setBemBusy] = useState(false)
+  const [bemFejl, setBemFejl] = useState('')
+  const [bemRes, setBemRes] = useState(null)
+
+  async function bem() {
+    setBemBusy(true); setBemFejl(''); setBemRes(null)
+    const { data, error } = await supabase.rpc('auto_beman', { p_booking_id: booking.booking_id })
+    setBemBusy(false)
+    if (error) { setBemFejl('Fejl: ' + error.message); return }
+    if (!data || data.ok === false) { setBemFejl(data?.fejl || 'Kunne ikke åbne vagter.'); return }
+    setBemRes(data)
+  }
+
+  const d = bemRes ? (DAEKNING[bemRes.daekning] || { bg: '#F1F5F9', border: c.line, col: c.text, tekst: bemRes.daekning }) : null
+
   return (
     <Modal onClose={onClose}>
       <ModalHead titel={renTitel(booking.titel)} struck={booking.aflyst} onClose={onClose} />
@@ -213,6 +235,26 @@ function BookingDetalje({ booking, onClose }) {
           return <div key={i} style={{ fontSize: 14 }}>{l}</div>
         })}
       </div>
+
+      {!booking.aflyst && (
+        <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
+          <button style={{ ...btn, width: '100%', opacity: bemBusy ? 0.6 : 1 }} onClick={bem} disabled={bemBusy}>
+            {bemBusy ? 'Åbner vagter …' : 'Åbn vagter & notificér ledige'}
+          </button>
+          {bemFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red }}>{bemFejl}</div>}
+          {d && (
+            <div style={{ marginTop: 12, padding: '12px 14px', background: d.bg, border: `1px solid ${d.border}`, color: d.col, borderRadius: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{d.tekst}</div>
+              <div style={{ marginTop: 6, fontSize: 13 }}>
+                {bemRes.vagter_oprettet} {bemRes.vagter_oprettet === 1 ? 'vagt' : 'vagter'} åbnet · {bemRes.medarbejdere_notificeret} medarbejder{bemRes.medarbejdere_notificeret === 1 ? '' : 'e'} notificeret
+              </div>
+              {bemRes.aabne_vagter > 0 && bemRes.medarbejdere_notificeret === 0 && (
+                <div style={{ marginTop: 4, fontSize: 12.5 }}>Ingen ledige medarbejdere på datoen at notificere endnu.</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   )
 }
