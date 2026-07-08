@@ -6,6 +6,7 @@ import SetPassword from './components/SetPassword.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Overblik from './sections/Overblik.jsx'
 import Medarbejdere from './sections/Medarbejdere.jsx'
+import Enzo from './sections/Enzo.jsx'
 import Placeholder from './sections/Placeholder.jsx'
 import { c, font, btn } from './ui.js'
 
@@ -86,7 +87,7 @@ export default function App() {
           <Route path="/overblik" element={adminOnly(<Overblik />)} />
           <Route path="/medarbejdere" element={adminOnly(<Medarbejdere />)} />
           <Route path="/kalender" element={<Placeholder title="Kalender" note="Google-Calendar-grade kalender med ledighed + auto-tildeling — senere fase." />} />
-          <Route path="/enzo" element={adminOnly(<Placeholder title="Enzo" note="Assistent + godkendelser — senere fase." />)} />
+          <Route path="/enzo" element={adminOnly(<Enzo />)} />
           <Route path="/notifikationer" element={<Placeholder title="Notifikationer" note="Mail-baserede push-notifikationer — senere fase." />} />
           <Route path="*" element={<Navigate to={'/' + home} replace />} />
         </Routes>
