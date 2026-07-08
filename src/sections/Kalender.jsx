@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
-import { c, card, btn, btnGhost, font } from '../ui.js'
+import { c, card, btn, btnGhost, input, font } from '../ui.js'
 
 const MDR = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december']
 const UGEDAGE = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
@@ -19,6 +19,7 @@ const fmtDatoKort = (d) => d.toLocaleDateString('da-DK', { weekday: 'short', day
 const harTid = (d) => d.getHours() !== 0 || d.getMinutes() !== 0
 // Postgres time "16:00:00" -> "16.00"
 const fmtKlokke = (t) => (typeof t === 'string' ? t.slice(0, 5).replace(':', '.') : '')
+const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const TONE = {
   blue: { background: '#E8F0FE', color: '#1E3A8A', border: c.blue },
@@ -31,7 +32,7 @@ const renTitel = (t) => (t || '').replace(/^❌\s*AFLYST\s*—\s*/i, '').trim()
 
 // ---- Genbrugelig maaneds-grid (controlled cursor). events: normaliserede
 // { key, start:Date, chip:{ tid?, label, tone, struck }, raw }. onSelect(raw). ----
-function MaanedsGrid({ cursor, onCursor, events, onSelect }) {
+function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
   const perDag = useMemo(() => {
     const m = new Map()
     for (const e of events) {
@@ -79,6 +80,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect }) {
             return (
               <div
                 key={i}
+                onClick={onDayClick ? () => onDayClick(d) : undefined}
                 style={{
                   minHeight: 108,
                   borderRight: (i % 7 !== 6) ? `1px solid ${c.line}` : 'none',
@@ -88,6 +90,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect }) {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 3,
+                  cursor: onDayClick ? 'pointer' : 'default',
                 }}
               >
                 <div style={{ textAlign: 'right', marginBottom: 2 }}>
@@ -108,7 +111,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect }) {
                   return (
                     <button
                       key={e.key}
-                      onClick={() => onSelect(e.raw)}
+                      onClick={(ev) => { ev.stopPropagation(); onSelect(e.raw) }}
                       title={e.chip.label}
                       style={{
                         width: '100%', textAlign: 'left', border: 'none', borderRadius: 6,
@@ -320,18 +323,51 @@ function MedarbejderKalender() {
   const [cursor, setCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    let alive = true
-    setLoading(true); setErr('')
-    supabase.rpc('medarbejder_kalender').then(({ data, error }) => {
-      if (!alive) return
-      setLoading(false)
-      if (error) { setErr(error.message); return }
-      if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente din kalender.'); return }
-      setData(data)
-    })
-    return () => { alive = false }
+  // Ledigheds-formular
+  const [dato, setDato] = useState('')
+  const [fraTid, setFraTid] = useState('')
+  const [tilTid, setTilTid] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(null) // null | 'meld' | <availability-id>
+  const [handlingFejl, setHandlingFejl] = useState('')
+
+  // Reloads roerer ikke `loading` (kun foerste hentning), saa formularen ikke flimrer.
+  const load = useCallback(async () => {
+    setErr('')
+    const { data: res, error } = await supabase.rpc('medarbejder_kalender')
+    setLoading(false)
+    if (error) { setErr(error.message); return }
+    if (!res || res.ok === false) { setErr(res?.fejl || 'Kunne ikke hente din kalender.'); return }
+    setData(res)
   }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function meldLedig() {
+    if (!dato) { setHandlingFejl('Vælg en dato.'); return }
+    setBusy('meld'); setHandlingFejl('')
+    const { data: res, error } = await supabase.rpc('medarbejder_handling', {
+      p_aktion: 'meld_ledig',
+      p_payload: { dato, fra_tid: fraTid || null, til_tid: tilTid || null, note: note.trim() || null },
+    })
+    if (error) { setBusy(null); setHandlingFejl('Fejl: ' + error.message); return }
+    if (!res || res.ok === false) { setBusy(null); setHandlingFejl(res?.fejl || 'Kunne ikke melde ledig.'); return }
+    setFraTid(''); setTilTid(''); setNote('')
+    await load()
+    setBusy(null)
+  }
+
+  async function fjernLedig(id) {
+    setBusy(id); setHandlingFejl('')
+    const { data: res, error } = await supabase.rpc('medarbejder_handling', {
+      p_aktion: 'fjern_ledig',
+      p_payload: { id },
+    })
+    if (error) { setBusy(null); setHandlingFejl('Fejl: ' + error.message); return }
+    if (!res || res.ok === false) { setBusy(null); setHandlingFejl(res?.fejl || 'Kunne ikke fjerne ledigheden.'); return }
+    await load()
+    setBusy(null)
+  }
 
   const vagter = data?.mine_vagter || []
   const aabne = data?.aabne_vagter || []
@@ -361,10 +397,10 @@ function MedarbejderKalender() {
 
       {!loading && !err && data && (
         <>
-          <MaanedsGrid cursor={cursor} onCursor={setCursor} events={events} onSelect={setSelected} />
+          <MaanedsGrid cursor={cursor} onCursor={setCursor} events={events} onSelect={setSelected} onDayClick={(d) => setDato(toISODate(d))} />
           <Legend items={[{ tone: 'green', tekst: 'Bekræftet' }, { tone: 'blue', tekst: 'Tildelt' }]} />
 
-          <div style={{ display: 'flex', gap: 20, marginTop: 28, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 20, marginTop: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <MiniListe
               titel="Åbne vagter"
               note="mangler bemanding"
@@ -381,24 +417,49 @@ function MedarbejderKalender() {
               ))}
             </MiniListe>
 
-            <MiniListe
-              titel="Min ledighed"
-              note="redigering kommer senere"
-              tom={ledighed.length === 0 ? 'Ingen registreret ledighed endnu.' : null}
-            >
-              {ledighed.map((l) => {
-                const interval = l.fra_tid && l.til_tid ? `${fmtKlokke(l.fra_tid)}–${fmtKlokke(l.til_tid)}` : (l.fra_tid ? `fra ${fmtKlokke(l.fra_tid)}` : '')
-                return (
-                  <div key={l.id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}` }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(l.dato))}</div>
-                      {interval && <div style={{ fontSize: 13, color: c.slate2 }}>{interval}</div>}
-                    </div>
-                    {l.note && <div style={{ fontSize: 13, color: c.sub, marginTop: 3 }}>{l.note}</div>}
+            <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>Min ledighed</div>
+              <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: 14 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Meld dig ledig</div>
+                  <input type="date" style={input} value={dato} onChange={(e) => setDato(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <div style={{ flex: 1, fontSize: 11, color: c.sub }}>Fra (valgfri)</div>
+                    <div style={{ flex: 1, fontSize: 11, color: c.sub }}>Til (valgfri)</div>
                   </div>
-                )
-              })}
-            </MiniListe>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input type="time" style={{ ...input, flex: 1 }} value={fraTid} onChange={(e) => setFraTid(e.target.value)} />
+                    <input type="time" style={{ ...input, flex: 1 }} value={tilTid} onChange={(e) => setTilTid(e.target.value)} />
+                  </div>
+                  <div style={{ fontSize: 11, color: c.sub, margin: '-4px 0 10px' }}>Tom tid = ledig hele dagen. Tip: klik en dag i kalenderen for at vælge dato.</div>
+                  <input type="text" style={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfrit)" />
+                  <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={meldLedig} disabled={!!busy}>
+                    {busy === 'meld' ? 'Melder …' : 'Meld ledig'}
+                  </button>
+                  {handlingFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red }}>{handlingFejl}</div>}
+                </div>
+
+                {ledighed.length === 0 ? (
+                  <div style={{ padding: '14px 16px', color: c.sub, fontSize: 14, borderTop: `1px solid ${c.line}` }}>Ingen registreret ledighed endnu.</div>
+                ) : ledighed.map((l) => {
+                  const interval = l.fra_tid && l.til_tid ? `${fmtKlokke(l.fra_tid)}–${fmtKlokke(l.til_tid)}` : (l.fra_tid ? `fra ${fmtKlokke(l.fra_tid)}` : '')
+                  return (
+                    <div key={l.id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(l.dato))}</div>
+                          {interval && <div style={{ fontSize: 13, color: c.slate2 }}>{interval}</div>}
+                        </div>
+                        {l.note && <div style={{ fontSize: 13, color: c.sub, marginTop: 3 }}>{l.note}</div>}
+                      </div>
+                      <button style={{ ...btnGhost, padding: '7px 12px', opacity: busy ? 0.6 : 1 }} onClick={() => fjernLedig(l.id)} disabled={!!busy}>
+                        {busy === l.id ? 'Fjerner …' : 'Fjern'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </>
       )}
