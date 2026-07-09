@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
 
@@ -157,15 +157,8 @@ export default function BookingForm({ enheder, booking, onClose, onSaved }) {
 
   const inputU = { ...input, marginBottom: 0 }
 
-  // Luk kun paa backdrop naar baade mousedown OG klik rammer selve backdroppen.
-  // Ellers ryger en tekst-markering der slippes uden for kortet ved et uheld
-  // til at lukke formularen og kaste al indtastning bort.
-  const nedPaaBackdrop = useRef(false)
-
   return (
     <div
-      onMouseDown={(e) => { nedPaaBackdrop.current = e.target === e.currentTarget }}
-      onClick={(e) => { if (!busy && nedPaaBackdrop.current && e.target === e.currentTarget) onClose() }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 60, fontFamily: font }}
     >
       <div style={{ ...card, width: 540, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
