@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
+import BookingForm from '../components/BookingForm.jsx'
 
 const MDR = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december']
 const UGEDAGE = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
@@ -25,6 +26,58 @@ const TONE = {
   blue: { background: '#E8F0FE', color: '#1E3A8A', border: c.blue },
   green: { background: '#DCFCE7', color: '#166534', border: c.green },
   slate: { background: '#F1F5F9', color: c.slate2, border: c.slate },
+}
+
+// chip.tone kan vaere en TONE-noegle eller et farve-objekt (enheds-farver).
+const toneStil = (tone) => (tone && typeof tone === 'object' ? tone : (TONE[tone] || TONE.blue))
+
+// Enheds-farver: catering i blaa-familien, vogne i tydeligt adskilte nuancer.
+// Tildeles i enheder_liste-raekkefoelge (type, navn) — stabil pr. session.
+const CATERING_FARVER = [
+  { background: '#E8F0FE', color: '#1E3A8A', border: '#0066FF' }, // blaa
+  { background: '#E0E7FF', color: '#3730A3', border: '#6366F1' }, // indigo
+]
+const VOGN_FARVER = [
+  { background: '#F3E8FF', color: '#6B21A8', border: '#9333EA' }, // lilla
+  { background: '#CCFBF1', color: '#115E59', border: '#0D9488' }, // teal
+  { background: '#FFEDD5', color: '#9A3412', border: '#EA580C' }, // orange
+  { background: '#FCE7F3', color: '#9D174D', border: '#DB2777' }, // pink
+]
+// Amber "kraever handling" — bevidst adskilt fra TONE.slate (aflyst) saa en
+// aktiv booking uden enhed ikke ligner en aflyst i grid og signaturforklaring.
+const UDEN_ENHED_FARVE = { background: '#FEF9C3', color: '#854D0E', border: '#CA8A04' }
+
+function byggeEnhedFarver(enheder) {
+  const m = new Map()
+  let ci = 0, vi = 0
+  for (const e of enheder) {
+    if (e.type === 'catering') m.set(e.navn, CATERING_FARVER[ci++ % CATERING_FARVER.length])
+    else m.set(e.navn, VOGN_FARVER[vi++ % VOGN_FARVER.length])
+  }
+  return m
+}
+
+// Fremhaevet logistik-tekst (booking.info / vagt.info) — driftskritisk.
+function InfoBoks({ tekst }) {
+  if (!tekst) return null
+  return (
+    <div style={{ marginTop: 14, padding: '10px 14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '.04em' }}>Info · logistik</div>
+      <div style={{ fontSize: 14, marginTop: 5, whiteSpace: 'pre-wrap', color: c.ink }}>{tekst}</div>
+    </div>
+  )
+}
+
+// "Casanova · hentes på lageret kl. 10 …" under en vagt-linje.
+function EnhedInfoLinje({ enhed, info }) {
+  if (!enhed && !info) return null
+  return (
+    <div style={{ fontSize: 12.5, marginTop: 3, overflowWrap: 'break-word' }}>
+      {enhed && <span style={{ fontWeight: 700 }}>{enhed}</span>}
+      {enhed && info && <span style={{ color: c.sub }}> · </span>}
+      {info && <span style={{ color: c.sub }}>{info}</span>}
+    </div>
+  )
 }
 
 // Renser titel for teknisk stoej og "❌ AFLYST —"-praefiks til visning.
@@ -107,7 +160,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                   </span>
                 </div>
                 {evts.map((e) => {
-                  const t = TONE[e.chip.tone] || TONE.blue
+                  const t = toneStil(e.chip.tone)
                   return (
                     <button
                       key={e.key}
@@ -138,11 +191,14 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
 function Legend({ items }) {
   return (
     <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: c.sub, flexWrap: 'wrap' }}>
-      {items.map((it) => (
-        <span key={it.tekst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 3, background: TONE[it.tone].background, borderLeft: `3px solid ${TONE[it.tone].border}` }} /> {it.tekst}
-        </span>
-      ))}
+      {items.map((it) => {
+        const t = toneStil(it.tone)
+        return (
+          <span key={it.tekst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 12, height: 12, borderRadius: 3, background: t.background, borderLeft: `3px solid ${t.border}` }} /> {it.tekst}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -197,7 +253,7 @@ function ShiftBadge({ status }) {
   return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
 }
 
-function BookingDetalje({ booking, onClose, onVagtChange }) {
+function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger }) {
   const start = new Date(booking.start)
   const slut = new Date(booking.slut)
   const linjer = (booking.beskrivelse || '').split('\n').filter((l) => l.trim())
@@ -268,7 +324,15 @@ function BookingDetalje({ booking, onClose, onVagtChange }) {
       <ModalHead titel={renTitel(booking.titel)} struck={booking.aflyst} onClose={onClose} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
         <BookingBadge status={booking.status} aflyst={booking.aflyst} />
+        {booking.enhed && (
+          <span style={{ background: (enhedFarve || UDEN_ENHED_FARVE).background, color: (enhedFarve || UDEN_ENHED_FARVE).color, border: `1px solid ${(enhedFarve || UDEN_ENHED_FARVE).border}`, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+            {booking.enhed}{booking.enhed_type ? ` · ${booking.enhed_type}` : ''}
+          </span>
+        )}
         {booking.lokation && <span style={{ fontSize: 13, color: c.sub }}>{booking.lokation}</span>}
+        {!booking.aflyst && onRediger && (
+          <button style={{ ...btnGhost, padding: '6px 12px', fontSize: 13, marginLeft: 'auto' }} onClick={onRediger}>Rediger</button>
+        )}
       </div>
       <div style={{ fontSize: 14, color: c.text, marginTop: 12 }}>
         {fmtDag(start)}<br />
@@ -279,6 +343,7 @@ function BookingDetalje({ booking, onClose, onVagtChange }) {
           Denne booking er aflyst.
         </div>
       )}
+      <InfoBoks tekst={booking.info} />
       <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {linjer.map((l, i) => {
           const sep = l.indexOf(':')
@@ -368,17 +433,53 @@ function BookingDetalje({ booking, onClose, onVagtChange }) {
   )
 }
 
+function FilterPill({ aktiv, onClick, tekst, farve }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        border: `1.5px solid ${aktiv ? (farve ? farve.border : c.ink) : c.line}`,
+        background: aktiv ? (farve ? farve.background : c.ink) : c.card,
+        color: aktiv ? (farve ? farve.color : '#fff') : c.slate2,
+        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
+        display: 'inline-flex', alignItems: 'center', gap: 7,
+      }}
+    >
+      {farve && <span style={{ width: 9, height: 9, borderRadius: 5, background: farve.border }} />}
+      {tekst}
+    </button>
+  )
+}
+
+// Felt-navne fra admin_booking_gem's `mangler` -> dansk visning.
+const MANGLER_DA = {
+  name: 'navn', email: 'email', phone: 'telefon', company: 'firma', type: 'kundetype',
+  event_date: 'dato', food_type: 'mad', covers: 'kuverter', staff_required: 'medarbejdere',
+  total_price: 'pris', enhed_id: 'enhed', info: 'info',
+}
+
 function AdminKalender() {
   const [data, setData] = useState(null)
+  const [enheder, setEnheder] = useState([])
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
   const [cursor, setCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
   const [selected, setSelected] = useState(null)
+  const [filter, setFilter] = useState('alle')   // 'alle' | enhed-id
+  const [form, setForm] = useState(null)         // null | { booking: raa booking | null }
+  const [gemt, setGemt] = useState(null)         // kvittering efter gem: { mangler: [] }
+  const [enhedFejl, setEnhedFejl] = useState('')
+
+  // Sekvens-token: load() kaldes fra mount, vagt-handlinger og gem, saa et
+  // out-of-order svar ikke maa overskrive friskere data med et aeldre snapshot.
+  const loadSeq = useRef(0)
 
   // Reloads roerer ikke `loading` (kun foerste hentning), saa modalen ikke flimrer.
   const load = useCallback(() => {
     setErr('')
+    const seq = ++loadSeq.current
     supabase.rpc('kalender_data').then(({ data, error }) => {
+      if (seq !== loadSeq.current) return
       setLoading(false)
       if (error) { setErr(error.message); return }
       if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente kalenderen.'); return }
@@ -386,27 +487,76 @@ function AdminKalender() {
     })
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const hentEnheder = useCallback(() => {
+    supabase.rpc('enheder_liste').then(({ data, error }) => {
+      if (!error && Array.isArray(data)) { setEnheder(data); setEnhedFejl('') }
+      else setEnhedFejl('Enheder kunne ikke hentes — enhedsfilter og enhedsvalg er midlertidigt utilgængelige.')
+    })
+  }, [])
 
-  const events = useMemo(() => (data || []).map((b) => {
+  useEffect(() => { load() }, [load])
+  useEffect(() => { hentEnheder() }, [hentEnheder])
+
+  const farver = useMemo(() => byggeEnhedFarver(enheder), [enheder])
+  const valgtEnhed = filter === 'alle' ? null : (enheder.find((e) => e.id === filter) || null)
+  const synlige = useMemo(
+    () => (data || []).filter((b) => !valgtEnhed || b.enhed === valgtEnhed.navn),
+    [data, valgtEnhed],
+  )
+
+  const events = useMemo(() => synlige.map((b) => {
     const start = new Date(b.start)
     return {
       key: b.booking_id,
       start,
-      chip: { tid: fmtTid(start), label: renTitel(b.titel), tone: b.aflyst ? 'slate' : 'blue', struck: b.aflyst },
+      chip: { tid: fmtTid(start), label: renTitel(b.titel), tone: b.aflyst ? 'slate' : (farver.get(b.enhed) || UDEN_ENHED_FARVE), struck: b.aflyst },
       raw: b,
     }
-  }), [data])
+  }), [synlige, farver])
 
-  const iVisning = (data || []).filter((b) => iMaaned(new Date(b.start), cursor)).length
+  const iVisning = synlige.filter((b) => iMaaned(new Date(b.start), cursor)).length
+  const harUdenEnhed = (data || []).some((b) => !b.aflyst && !b.enhed)
+
+  function bookingGemt(res) {
+    setForm(null)
+    setGemt({ mangler: Array.isArray(res?.mangler) ? res.mangler : [] })
+    load()
+  }
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Kalender</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h1 style={{ fontSize: 24, margin: 0 }}>Kalender</h1>
         {data && <span style={{ color: c.sub, fontSize: 14 }}>{iVisning} booking{iVisning === 1 ? '' : 'er'} denne måned</span>}
+        <button style={{ ...btn, marginLeft: 'auto' }} onClick={() => { setGemt(null); setForm({ booking: null }) }}>+ Ny booking</button>
       </div>
-      <p style={{ color: c.sub, marginTop: 0 }}>Overblik over bookinger. Klik en booking for detaljer. (Visning — redigering og tildeling kommer senere.)</p>
+      <p style={{ color: c.sub, margin: '6px 0 0' }}>Overblik over bookinger. Klik en booking for detaljer — eller opret en ny.</p>
+
+      {enhedFejl && (
+        <div style={{ ...card, marginTop: 14, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ flex: 1 }}>{enhedFejl}</span>
+          <button style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }} onClick={hentEnheder}>Prøv igen</button>
+        </div>
+      )}
+
+      {enheder.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+          <FilterPill aktiv={filter === 'alle'} onClick={() => setFilter('alle')} tekst="Alle" />
+          {enheder.map((e) => (
+            <FilterPill key={e.id} aktiv={filter === e.id} onClick={() => setFilter(e.id)} tekst={e.navn} farve={farver.get(e.navn)} />
+          ))}
+        </div>
+      )}
+
+      {gemt && (
+        <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+          <span>
+            Booking gemt ✓
+            {gemt.mangler.length > 0 && ` — mangler stadig: ${gemt.mangler.map((m) => MANGLER_DA[m] || m).join(', ')}`}
+          </span>
+          <button onClick={() => setGemt(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+      )}
 
       {loading && <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter kalenderen …</div>}
       {err && <div style={{ ...card, marginTop: 16, color: c.red }}>Fejl: {err}</div>}
@@ -414,11 +564,33 @@ function AdminKalender() {
       {!loading && !err && data && (
         <>
           <MaanedsGrid cursor={cursor} onCursor={setCursor} events={events} onSelect={setSelected} />
-          <Legend items={[{ tone: 'blue', tekst: 'Aktiv booking' }, { tone: 'slate', tekst: 'Aflyst' }]} />
+          <Legend
+            items={[
+              ...enheder.map((e) => ({ tone: farver.get(e.navn), tekst: e.navn })),
+              ...(harUdenEnhed ? [{ tone: UDEN_ENHED_FARVE, tekst: 'Uden enhed' }] : []),
+              { tone: 'slate', tekst: 'Aflyst' },
+            ]}
+          />
         </>
       )}
 
-      {selected && <BookingDetalje booking={selected} onClose={() => setSelected(null)} onVagtChange={load} />}
+      {selected && (
+        <BookingDetalje
+          booking={selected}
+          enhedFarve={farver.get(selected.enhed)}
+          onClose={() => setSelected(null)}
+          onVagtChange={load}
+          onRediger={() => { setGemt(null); setForm({ booking: selected }); setSelected(null) }}
+        />
+      )}
+      {form && (
+        <BookingForm
+          enheder={enheder}
+          booking={form.booking}
+          onClose={() => setForm(null)}
+          onSaved={bookingGemt}
+        />
+      )}
     </div>
   )
 }
@@ -445,10 +617,12 @@ function VagtDetalje({ vagt, onClose }) {
         {harTid(d) && <><br /><span style={{ color: c.sub }}>kl. {fmtTid(d)}</span></>}
       </div>
       <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {vagt.enhed && <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Enhed:</span><span style={{ fontWeight: 600 }}> {vagt.enhed}{vagt.enhed_type ? ` (${vagt.enhed_type})` : ''}</span></div>}
         <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Koncept:</span><span style={{ fontWeight: 600 }}> {vagt.koncept}</span></div>
         <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Kuverter:</span><span style={{ fontWeight: 600 }}> {vagt.covers}</span></div>
         <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Status:</span><span style={{ fontWeight: 600 }}> {vagt.status === 'bekraeftet' ? 'bekræftet' : 'tildelt'}</span></div>
       </div>
+      <InfoBoks tekst={vagt.info} />
     </Modal>
   )
 }
@@ -577,6 +751,7 @@ function MedarbejderKalender() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{v.koncept}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
+                    <EnhedInfoLinje enhed={v.enhed} info={v.info} />
                   </div>
                   <div style={{ fontSize: 13, color: c.slate2 }}>{v.covers} kuverter</div>
                   <button
@@ -599,6 +774,7 @@ function MedarbejderKalender() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{v.koncept}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
+                    <EnhedInfoLinje enhed={v.enhed} info={v.info} />
                   </div>
                   <VagtBadge status={v.status} />
                   {v.status === 'tildelt' && (
