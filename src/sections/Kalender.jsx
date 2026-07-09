@@ -482,6 +482,10 @@ function MedarbejderKalender() {
   const [busy, setBusy] = useState(null) // null | 'meld' | <availability-id>
   const [handlingFejl, setHandlingFejl] = useState('')
 
+  // Vagt-handlinger (tag / bekræft / meld fra) — egen laase- og fejl-state.
+  const [vagtBusy, setVagtBusy] = useState(null) // shift_id under handling
+  const [vagtFejl, setVagtFejl] = useState('')
+
   // Reloads roerer ikke `loading` (kun foerste hentning), saa formularen ikke flimrer.
   const load = useCallback(async () => {
     setErr('')
@@ -520,6 +524,18 @@ function MedarbejderKalender() {
     setBusy(null)
   }
 
+  async function vagtHandling(aktion, shiftId) {
+    setVagtBusy(shiftId); setVagtFejl('')
+    const { data: res, error } = await supabase.rpc('medarbejder_handling', {
+      p_aktion: aktion,
+      p_payload: { shift_id: shiftId },
+    })
+    if (error) { setVagtBusy(null); setVagtFejl('Fejl: ' + error.message); return }
+    if (!res || res.ok === false) { setVagtBusy(null); setVagtFejl(res?.fejl || 'Handlingen fejlede.'); return }
+    await load()
+    setVagtBusy(null)
+  }
+
   const vagter = data?.mine_vagter || []
   const aabne = data?.aabne_vagter || []
   const ledighed = data?.min_ledighed || []
@@ -554,7 +570,6 @@ function MedarbejderKalender() {
           <div style={{ display: 'flex', gap: 20, marginTop: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <MiniListe
               titel="Åbne vagter"
-              note="mangler bemanding"
               tom={aabne.length === 0 ? 'Ingen åbne vagter lige nu.' : null}
             >
               {aabne.map((v) => (
@@ -564,6 +579,44 @@ function MedarbejderKalender() {
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
                   </div>
                   <div style={{ fontSize: 13, color: c.slate2 }}>{v.covers} kuverter</div>
+                  <button
+                    style={{ ...btn, padding: '8px 12px', opacity: vagtBusy ? 0.6 : 1 }}
+                    disabled={!!vagtBusy}
+                    onClick={() => vagtHandling('vagt_tag', v.shift_id)}
+                  >
+                    {vagtBusy === v.shift_id ? '…' : 'Tag vagt'}
+                  </button>
+                </div>
+              ))}
+            </MiniListe>
+
+            <MiniListe
+              titel="Mine vagter"
+              tom={vagter.length === 0 ? 'Ingen tildelte vagter endnu.' : null}
+            >
+              {vagter.map((v) => (
+                <div key={v.shift_id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v.koncept}</div>
+                    <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
+                  </div>
+                  <VagtBadge status={v.status} />
+                  {v.status === 'tildelt' && (
+                    <button
+                      style={{ ...btn, padding: '8px 12px', opacity: vagtBusy ? 0.6 : 1 }}
+                      disabled={!!vagtBusy}
+                      onClick={() => vagtHandling('vagt_accepter', v.shift_id)}
+                    >
+                      {vagtBusy === v.shift_id ? '…' : 'Bekræft'}
+                    </button>
+                  )}
+                  <button
+                    style={{ ...btnGhost, padding: '8px 12px', color: c.red, opacity: vagtBusy ? 0.6 : 1 }}
+                    disabled={!!vagtBusy}
+                    onClick={() => vagtHandling('vagt_afmeld', v.shift_id)}
+                  >
+                    {vagtBusy === v.shift_id ? '…' : 'Meld fra'}
+                  </button>
                 </div>
               ))}
             </MiniListe>
@@ -612,6 +665,7 @@ function MedarbejderKalender() {
               </div>
             </div>
           </div>
+          {vagtFejl && <div style={{ marginTop: 14, fontSize: 13, color: c.red }}>{vagtFejl}</div>}
         </>
       )}
 
