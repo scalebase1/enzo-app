@@ -181,7 +181,7 @@ export default function Fakturaer() {
                     <span style={{ color: c.slate, fontSize: 12, width: 12 }}>{aaben ? '▾' : '▸'}</span>
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>
-                        {f.nummer || <span style={{ color: c.slate2, fontWeight: 600, fontStyle: 'italic' }}>Kladde</span>}
+                        {f.nummer || <span style={{ color: c.slate2, fontWeight: 600 }}>—</span>}
                       </div>
                       <div style={{ fontSize: 13, color: c.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.kunde || 'Ukendt'}</div>
                     </div>

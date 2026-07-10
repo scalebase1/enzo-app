@@ -109,7 +109,8 @@ export default function Overblik() {
   const fakturaer = data?.manglende_fakturaer_liste || []
   const vagter = data?.aabne_vagter_liste || []
   const koncepter = data?.per_koncept || []
-  const aktivitet = data?.seneste_aktivitet || []
+  // Skjul scheduler-stoej (proaktiv_gennemgang) — kun rigtige haendelser i feedet.
+  const aktivitet = (data?.seneste_aktivitet || []).filter((a) => a.handling !== 'proaktiv_gennemgang')
   const graf = data?.omsaetning_maanedlig || []
 
   return (
@@ -198,7 +199,7 @@ export default function Overblik() {
             </Kort>
 
             <Kort titel="Seneste aktivitet">
-              {aktivitet.length === 0 ? <Tom>Ingen registreret aktivitet.</Tom> : aktivitet.map((a, i) => (
+              {aktivitet.length === 0 ? <Tom>Ingen nylig aktivitet.</Tom> : aktivitet.map((a, i) => (
                 <Raekke key={i} top={i > 0}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14 }}>{a.handling || '—'}</div>
