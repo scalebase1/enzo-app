@@ -6,6 +6,7 @@ import SetPassword from './components/SetPassword.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Overblik from './sections/Overblik.jsx'
 import Medarbejdere from './sections/Medarbejdere.jsx'
+import Kunder from './sections/Kunder.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
 import Placeholder from './sections/Placeholder.jsx'
@@ -15,6 +16,7 @@ import { c, font, btn } from './ui.js'
 const ALL_SECTIONS = [
   { key: 'overblik', label: 'Overblik', icon: '▦', admin: true },
   { key: 'medarbejdere', label: 'Medarbejdere', icon: '◉', admin: true },
+  { key: 'kunder', label: 'Kunder', icon: '◎', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
   { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
   { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: false },
@@ -87,6 +89,7 @@ export default function App() {
           <Route path="/" element={<Navigate to={'/' + home} replace />} />
           <Route path="/overblik" element={adminOnly(<Overblik />)} />
           <Route path="/medarbejdere" element={adminOnly(<Medarbejdere />)} />
+          <Route path="/kunder" element={adminOnly(<Kunder />)} />
           <Route path="/kalender" element={<Kalender />} />
           <Route path="/enzo" element={adminOnly(<Enzo />)} />
           <Route path="/notifikationer" element={<Placeholder title="Notifikationer" note="Mail-baserede push-notifikationer — senere fase." />} />
