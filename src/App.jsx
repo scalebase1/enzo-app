@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar.jsx'
 import Overblik from './sections/Overblik.jsx'
 import Medarbejdere from './sections/Medarbejdere.jsx'
 import Kunder from './sections/Kunder.jsx'
+import Fakturaer from './sections/Fakturaer.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
 import Placeholder from './sections/Placeholder.jsx'
@@ -17,6 +18,7 @@ const ALL_SECTIONS = [
   { key: 'overblik', label: 'Overblik', icon: '▦', admin: true },
   { key: 'medarbejdere', label: 'Medarbejdere', icon: '◉', admin: true },
   { key: 'kunder', label: 'Kunder', icon: '◎', admin: true },
+  { key: 'fakturaer', label: 'Fakturaer', icon: '❑', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
   { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
   { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: false },
@@ -90,6 +92,7 @@ export default function App() {
           <Route path="/overblik" element={adminOnly(<Overblik />)} />
           <Route path="/medarbejdere" element={adminOnly(<Medarbejdere />)} />
           <Route path="/kunder" element={adminOnly(<Kunder />)} />
+          <Route path="/fakturaer" element={adminOnly(<Fakturaer />)} />
           <Route path="/kalender" element={<Kalender />} />
           <Route path="/enzo" element={adminOnly(<Enzo />)} />
           <Route path="/notifikationer" element={<Placeholder title="Notifikationer" note="Mail-baserede push-notifikationer — senere fase." />} />
