@@ -270,6 +270,7 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
   const [valgtStaff, setValgtStaff] = useState({}) // shift_id -> staff_id
   const [vagtBusy, setVagtBusy] = useState(null)     // shift_id under handling
   const [vagtFejl, setVagtFejl] = useState('')
+  const [behov, setBehov] = useState(null)           // raa booking-felter (staff_required m.m.)
 
   const loadRoster = useCallback(async () => {
     setRosterFejl('')
@@ -285,7 +286,11 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
     supabase.rpc('medarbejdere_liste').then(({ data }) => {
       if (data && data.ok !== false) setMedarbejdere(data.medarbejdere || [])
     })
-  }, [loadRoster])
+    // Raa behovs-felter (staff_required) — supplerende, saa en fejl ikke braekker modalen.
+    supabase.rpc('booking_hent', { p_id: booking.booking_id }).then(({ data }) => {
+      if (data && data.ok !== false) setBehov(data.booking || null)
+    })
+  }, [loadRoster, booking.booking_id])
 
   const aktive = medarbejdere.filter((m) => m.onboarding_status === 'aktiv')
 
@@ -338,6 +343,11 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
         {fmtDag(start)}<br />
         <span style={{ color: c.sub }}>kl. {fmtTid(start)}–{fmtTid(slut)}</span>
       </div>
+      {behov && behov.staff_required != null && (
+        <div style={{ marginTop: 10, fontSize: 14 }}>
+          <span style={{ color: c.sub }}>Medarbejdere:</span> <span style={{ fontWeight: 700 }}>{behov.staff_required}</span> <span style={{ color: c.slate2, fontSize: 12.5 }}>(behov — se “Personale” nedenfor for tildelte)</span>
+        </div>
+      )}
       {booking.aflyst && (
         <div style={{ marginTop: 12, padding: '8px 12px', background: '#FEE2E2', color: '#991B1B', borderRadius: 9, fontSize: 13, fontWeight: 600 }}>
           Denne booking er aflyst.
