@@ -11,7 +11,7 @@ import Fakturaer from './sections/Fakturaer.jsx'
 import Loen from './sections/Loen.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
-import Placeholder from './sections/Placeholder.jsx'
+import Notifikationer from './sections/Notifikationer.jsx'
 import { c, font, btn } from './ui.js'
 
 // admin:true = kun admin (William). admin:false = admin + medarbejder.
@@ -23,7 +23,7 @@ const ALL_SECTIONS = [
   { key: 'loen', label: 'Løn', icon: '¤', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
   { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
-  { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: false },
+  { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: true },
 ]
 
 function FullMsg({ children }) {
@@ -98,7 +98,7 @@ export default function App() {
           <Route path="/loen" element={adminOnly(<Loen />)} />
           <Route path="/kalender" element={<Kalender />} />
           <Route path="/enzo" element={adminOnly(<Enzo />)} />
-          <Route path="/notifikationer" element={<Placeholder title="Notifikationer" note="Mail-baserede push-notifikationer — senere fase." />} />
+          <Route path="/notifikationer" element={adminOnly(<Notifikationer />)} />
           <Route path="*" element={<Navigate to={'/' + home} replace />} />
         </Routes>
       </main>
