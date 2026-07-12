@@ -87,10 +87,42 @@ function SoejleGraf({ data }) {
   )
 }
 
+// System-helbred: vises KUN naar noget kraever handling. Alt rent → intet banner.
+function HelbredBanner({ h }) {
+  if (!h) return null
+  const kritisk = h.email_pipeline_haenger === true
+  const advarsler = []
+  if (Number(h.medarbejdere_mangler_onboarding) > 0) advarsler.push(`${tal(h.medarbejdere_mangler_onboarding)} medarbejdere mangler invitation — de kan ikke få vagter før de er onboardet.`)
+  if (Number(h.fakturaer_uden_nummer) > 0) advarsler.push(`${tal(h.fakturaer_uden_nummer)} fakturaer mangler fakturanummer.`)
+  if (Number(h.bookinger_uden_enhed) > 0) advarsler.push(`${tal(h.bookinger_uden_enhed)} bookinger mangler enhed.`)
+  if (!kritisk && advarsler.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+      {kritisk && (
+        <div style={{ ...card, background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }}>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>
+            ⚠️ Notifikationer sendes ikke — {tal(h.koe_antal)} beskeder har hængt i {tal(h.koe_aeldste_minutter)} min.
+          </div>
+        </div>
+      )}
+      {advarsler.length > 0 && (
+        <div style={{ ...card, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>Kræver handling</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+            {advarsler.map((a, i) => <li key={i}>{a}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Overblik() {
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
+  const [helbred, setHelbred] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -100,6 +132,12 @@ export default function Overblik() {
       if (error) { setErr(error.message); return }
       if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente dashboardet.'); return }
       setData(data)
+    })
+    // Parallelt kald — helbred maa ALDRIG vaelte dashboardet, saa fejl sluges.
+    supabase.rpc('system_helbred').then(({ data, error }) => {
+      if (!alive) return
+      if (error || !data || data.ok === false) return
+      setHelbred(data)
     })
     return () => { alive = false }
   }, [])
@@ -120,6 +158,8 @@ export default function Overblik() {
         {data?.genereret && <span style={{ color: c.sub, fontSize: 13 }}>Opdateret {fmtTid(data.genereret)}</span>}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>Driften i tal — og det du skal handle på.</p>
+
+      <HelbredBanner h={helbred} />
 
       {loading && <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter dashboardet …</div>}
       {err && <div style={{ ...card, marginTop: 16, color: c.red }}>RPC-fejl: {err}</div>}
