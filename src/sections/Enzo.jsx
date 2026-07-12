@@ -34,12 +34,23 @@ function EnzoChat({ onSvar }) {
   const [tekst, setTekst] = useState('')
   const [venter, setVenter] = useState(false)
   const [chatFejl, setChatFejl] = useState('')
+  // Enzos hukommelse noegles paa sessionId — en ny nulstiller hukommelsen (ikke
+  // kun UI'et), saa William faktisk kan starte forfra.
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID())
   const boxRef = useRef(null)
 
   useEffect(() => {
     const el = boxRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [beskeder, venter])
+
+  function nySamtale() {
+    if (venter) return
+    setBeskeder([])
+    setTekst('')
+    setChatFejl('')
+    setSessionId(crypto.randomUUID())
+  }
 
   async function send() {
     const t = tekst.trim()
@@ -58,7 +69,7 @@ function EnzoChat({ onSvar }) {
       const res = await fetch(PROXY, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: t }),
+        body: JSON.stringify({ chatInput: t, sessionId }),
         signal: ctrl.signal,
       })
       clearTimeout(timer)
@@ -101,8 +112,17 @@ function EnzoChat({ onSvar }) {
 
   return (
     <div>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
-        Chat med Enzo
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+          Chat med Enzo
+        </div>
+        <button
+          onClick={nySamtale}
+          disabled={venter}
+          style={{ ...btnGhost, padding: '5px 11px', fontSize: 12.5, opacity: venter ? 0.6 : 1 }}
+        >
+          + Ny samtale
+        </button>
       </div>
       <div style={{ ...card, padding: 0, display: 'flex', flexDirection: 'column', height: 480 }}>
         <div ref={boxRef} style={{ flex: 1, overflowY: 'auto', padding: 16, background: c.bg, display: 'flex', flexDirection: 'column', gap: 10 }}>
