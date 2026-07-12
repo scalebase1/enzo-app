@@ -134,6 +134,9 @@ function VidenForm({ viden, onClose, onSaved }) {
       return
     }
     setBusy(false); setStatus('')
+    // Backenden satte gammel_fil_sti hvis en fil blev erstattet/fjernet — ryd den
+    // gamle fil op via Storage-API'et. Stille fejlhaandtering: gem lykkedes.
+    if (data.gammel_fil_sti) await supabase.storage.from('videnbase').remove([data.gammel_fil_sti]).catch(() => {})
     onSaved()
   }
 
@@ -317,6 +320,9 @@ export default function Viden() {
     setSletBusy(false)
     if (error) { setHandlingFejl('Fejl: ' + error.message); return }
     if (!data || data.ok === false) { setHandlingFejl(data?.fejl || 'Kunne ikke slette.'); return }
+    // Posten ER slettet — ryd dens fil op via Storage-API'et (backend maa ikke).
+    // En fejl her maa ikke vaelte sletningen: ignorér stille.
+    if (data.fil_sti) await supabase.storage.from('videnbase').remove([data.fil_sti]).catch(() => {})
     setSletKandidat(null)
     load()
   }
