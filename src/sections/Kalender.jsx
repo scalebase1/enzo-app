@@ -281,16 +281,20 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
     setRoster(data.vagter || [])
   }, [booking.booking_id])
 
-  useEffect(() => {
-    loadRoster()
-    supabase.rpc('medarbejdere_liste').then(({ data }) => {
-      if (data && data.ok !== false) setMedarbejdere(data.medarbejdere || [])
-    })
-    // Raa behovs-felter (staff_required) — supplerende, saa en fejl ikke braekker modalen.
+  // Raa behovs-felter (staff_required) — supplerende, saa en fejl ikke braekker modalen.
+  const hentBehov = useCallback(() => {
     supabase.rpc('booking_hent', { p_id: booking.booking_id }).then(({ data }) => {
       if (data && data.ok !== false) setBehov(data.booking || null)
     })
-  }, [loadRoster, booking.booking_id])
+  }, [booking.booking_id])
+
+  useEffect(() => {
+    loadRoster()
+    hentBehov()
+    supabase.rpc('medarbejdere_liste').then(({ data }) => {
+      if (data && data.ok !== false) setMedarbejdere(data.medarbejdere || [])
+    })
+  }, [loadRoster, hentBehov])
 
   const aktive = medarbejdere.filter((m) => m.onboarding_status === 'aktiv')
 
@@ -299,7 +303,10 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
     const { data, error } = await supabase.rpc('admin_handling', { p_aktion: aktion, p_payload: payload })
     if (error) { setVagtBusy(null); setVagtFejl('Fejl: ' + error.message); return }
     if (!data || data.ok === false) { setVagtBusy(null); setVagtFejl(data?.fejl || 'Handlingen fejlede.'); return }
+    // Genhent detaljens egne data (vagtrække + behov) OG udløs parent-reload,
+    // saa "Personale:" i beskrivelsen opdateres uden at lukke/genaabne.
     await loadRoster()
+    hentBehov()
     onVagtChange?.()
     setVagtBusy(null)
   }
@@ -493,7 +500,11 @@ function AdminKalender() {
       setLoading(false)
       if (error) { setErr(error.message); return }
       if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente kalenderen.'); return }
-      setData(data.bookinger || [])
+      const friske = data.bookinger || []
+      setData(friske)
+      // Opdater en aaben booking-detalje med friske data (bl.a. "Personale:" i
+      // beskrivelsen), saa vagt-aendringer afspejles med det samme uden genaabning.
+      setSelected((prev) => (prev ? friske.find((b) => b.booking_id === prev.booking_id) || prev : prev))
     })
   }, [])
 
