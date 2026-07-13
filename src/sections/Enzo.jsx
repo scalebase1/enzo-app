@@ -27,7 +27,7 @@ function tidspunkt(ts) {
   }
 }
 
-// Chat med Enzo via enzo-chat (edge-funktion → n8n-agent). Historik er lokal
+// Chat med Enzo via enzo-chat (edge-funktion → Supabase RPC'er). Historik er lokal
 // state — Enzo har selv Postgres-memory paa backend-siden.
 function EnzoChat({ onSvar }) {
   const [beskeder, setBeskeder] = useState([])
