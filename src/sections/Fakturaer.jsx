@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
-import { c, card, btn, btnGhost, font } from '../ui.js'
+import { c, card, btn, btnGhost, font, monoFont } from '../ui.js'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
 const fmtDato = (iso) => {
@@ -13,9 +14,13 @@ const momsSats = (r) => (r == null ? null : `${Math.round(Number(r) <= 1 ? Numbe
 
 const STATUS = {
   kladde: { bg: '#E5E7EB', col: '#4B5563', txt: 'Kladde' },
+  udstedt: { bg: '#FEF3C7', col: '#92400E', txt: 'Udstedt' }, // udstedt ≠ sendt: nr. tildelt, men kunden har intet fået endnu
   sendt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'Sendt' },
   betalt: { bg: '#DCFCE7', col: '#166534', txt: 'Betalt' },
 }
+
+// faktura_tekst/faktura_send returnerer denne fejl ordret når stamdata mangler — signal til at vise link.
+const MANGLER_VIRKSOMHED = 'Virksomhedsoplysninger mangler'
 
 function StatusBadge({ status }) {
   const s = STATUS[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
@@ -49,6 +54,31 @@ function Detalje({ label, value }) {
   )
 }
 
+// Link til stamdata-sektionen — vises når en fejl skyldes manglende virksomhedsoplysninger.
+function VirksomhedLink() {
+  return (
+    <Link to="/virksomhed" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 700, color: c.blue, textDecoration: 'none' }}>
+      Gå til Virksomhedsoplysninger →
+    </Link>
+  )
+}
+
+// Læse-modal (backdrop lukker) — matcher husets overlay-idiom.
+function Overlay({ onClose, width = 640, children }) {
+  const ned = useRef(false)
+  return (
+    <div
+      onMouseDown={(e) => { ned.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (ned.current && e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 60, fontFamily: font }}
+    >
+      <div style={{ ...card, width, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function Fakturaer() {
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
@@ -58,6 +88,7 @@ export default function Fakturaer() {
   const [busyId, setBusyId] = useState(null)        // faktura-id el. booking-id under handling
   const [handlingFejl, setHandlingFejl] = useState('')
   const [kvittering, setKvittering] = useState(null)
+  const [preview, setPreview] = useState(null)      // { id, kunde, loading, res, fejl } — forhåndsvisning (sender intet)
 
   const load = useCallback(async () => {
     setErr('')
@@ -74,7 +105,7 @@ export default function Fakturaer() {
   const manglende = data?.manglende || []
 
   const antal = useMemo(() => {
-    const a = { alle: fakturaer.length, kladde: 0, sendt: 0, betalt: 0 }
+    const a = { alle: fakturaer.length, kladde: 0, udstedt: 0, sendt: 0, betalt: 0 }
     for (const f of fakturaer) if (a[f.status] != null) a[f.status]++
     return a
   }, [fakturaer])
@@ -124,6 +155,24 @@ export default function Fakturaer() {
     () => supabase.rpc('admin_handling', { p_aktion: 'faktura_opret', p_payload: { booking_id: m.booking_id } }),
     () => `Kladde oprettet for ${m.kunde}.`,
   )
+  // Send: udstedt → sendt. Vis backendens "besked" ved succes; fejl vises ordret via udfoer.
+  const send = (f) => udfoer(
+    `send:${f.id}`,
+    () => supabase.rpc('faktura_send', { p_id: f.id }),
+    (res) => res.besked || `Faktura ${res.fakturanummer} sendt til ${res.modtager}.`,
+  )
+
+  // Forhåndsvis: kald faktura_tekst (sender INTET), vis resultatet i en dialog.
+  async function forhaandsvis(f) {
+    setPreview({ id: f.id, kunde: f.kunde, loading: true, res: null, fejl: '' })
+    const { data: res, error } = await supabase.rpc('faktura_tekst', { p_id: f.id })
+    setPreview((p) => {
+      if (!p || p.id !== f.id) return p   // en anden forhåndsvisning er åbnet i mellemtiden
+      if (error) return { ...p, loading: false, fejl: 'Fejl: ' + error.message }
+      if (!res || res.ok === false) return { ...p, loading: false, fejl: res?.fejl || 'Kunne ikke hente fakturateksten.' }
+      return { ...p, loading: false, res }
+    })
+  }
 
   const laast = busyId != null
 
@@ -133,7 +182,7 @@ export default function Fakturaer() {
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Fakturaer</h1>
         {data && <span style={{ color: c.sub, fontSize: 14 }}>{fakturaer.length} faktura{fakturaer.length === 1 ? '' : 'er'} · {manglende.length} mangler</span>}
       </div>
-      <p style={{ color: c.sub, marginTop: 0 }}>Faktura-livscyklus: kladde → udstedt → betalt. Opret manglende fakturaer fra bookinger.</p>
+      <p style={{ color: c.sub, marginTop: 0 }}>Faktura-livscyklus: kladde → udstedt → sendt → betalt. Opret manglende fakturaer fra bookinger.</p>
 
       {kvittering && (
         <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
@@ -142,9 +191,12 @@ export default function Fakturaer() {
         </div>
       )}
       {handlingFejl && (
-        <div style={{ ...card, marginTop: 16, background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-          <span>{handlingFejl}</span>
-          <button onClick={() => setHandlingFejl('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
+        <div style={{ ...card, marginTop: 16, background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <div>{handlingFejl}</div>
+            {handlingFejl.includes(MANGLER_VIRKSOMHED) && <VirksomhedLink />}
+          </div>
+          <button onClick={() => setHandlingFejl('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
         </div>
       )}
 
@@ -159,6 +211,7 @@ export default function Fakturaer() {
             <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}>
               <FilterPill aktiv={filter === 'alle'} onClick={() => setFilter('alle')} tekst="Alle" antal={antal.alle} />
               <FilterPill aktiv={filter === 'kladde'} onClick={() => setFilter('kladde')} tekst="Kladder" antal={antal.kladde} />
+              <FilterPill aktiv={filter === 'udstedt'} onClick={() => setFilter('udstedt')} tekst="Udstedt" antal={antal.udstedt} />
               <FilterPill aktiv={filter === 'sendt'} onClick={() => setFilter('sendt')} tekst="Sendt" antal={antal.sendt} />
               <FilterPill aktiv={filter === 'betalt'} onClick={() => setFilter('betalt')} tekst="Betalt" antal={antal.betalt} />
             </div>
@@ -192,11 +245,20 @@ export default function Fakturaer() {
                     <div style={{ display: 'flex', gap: 6 }} onClick={(e) => e.stopPropagation()}>
                       {f.status === 'kladde' && (
                         <>
+                          <button style={{ ...btnGhost, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => forhaandsvis(f)}>Forhåndsvis</button>
                           <button style={{ ...btn, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => udsted(f)}>
                             {busyId === `udsted:${f.id}` ? '…' : 'Udsted'}
                           </button>
                           <button style={{ ...btnGhost, padding: '7px 12px', color: c.red, opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => slet(f)}>
                             {busyId === `slet:${f.id}` ? 'Sletter …' : 'Slet'}
+                          </button>
+                        </>
+                      )}
+                      {f.status === 'udstedt' && (
+                        <>
+                          <button style={{ ...btnGhost, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => forhaandsvis(f)}>Forhåndsvis</button>
+                          <button style={{ ...btn, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => send(f)}>
+                            {busyId === `send:${f.id}` ? 'Sender …' : 'Send faktura'}
                           </button>
                         </>
                       )}
@@ -251,6 +313,40 @@ export default function Fakturaer() {
             </div>
           </div>
         </>
+      )}
+
+      {preview && (
+        <Overlay onClose={() => setPreview(null)}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 18, margin: 0 }}>Forhåndsvisning</h2>
+              <div style={{ fontSize: 13, color: c.sub, marginTop: 2 }}>{preview.kunde || 'Ukendt kunde'} · der sendes ingenting</div>
+            </div>
+            <button onClick={() => setPreview(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: c.slate2, fontSize: 22, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+          </div>
+
+          {preview.loading && <div style={{ color: c.sub, fontSize: 14 }}>Henter fakturatekst …</div>}
+
+          {preview.fejl && (
+            <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: 10, padding: '12px 14px', fontSize: 14, fontWeight: 600 }}>
+              <div>{preview.fejl}</div>
+              {preview.fejl.includes(MANGLER_VIRKSOMHED) && <VirksomhedLink />}
+            </div>
+          )}
+
+          {preview.res && (
+            <>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <Detalje label="Emne" value={preview.res.emne || '—'} />
+                <Detalje label="Modtager" value={preview.res.modtager || '—'} />
+                <Detalje label="Forfald" value={fmtDato(preview.res.forfald)} />
+                <Detalje label="I alt" value={kr(preview.res.beloeb)} />
+              </div>
+              <pre style={{ fontFamily: monoFont, fontSize: 12.5, lineHeight: 1.5, whiteSpace: 'pre', overflowX: 'auto', background: c.bg, border: `1px solid ${c.line}`, borderRadius: 10, padding: 14, margin: 0, color: c.text }}>{preview.res.tekst}</pre>
+              <div style={{ fontSize: 12.5, color: c.sub }}>Dette er kun en forhåndsvisning — der er ikke sendt noget til kunden.</div>
+            </>
+          )}
+        </Overlay>
       )}
     </div>
   )
