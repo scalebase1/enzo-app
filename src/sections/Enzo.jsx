@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, monoFont, sp } from '../ui.js'
 
-const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-proxy'
+const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-chat'
 
 function StatusBadge({ status }) {
   let bg = '#E5E7EB', col = '#4B5563', txt = status || '—'
@@ -27,7 +27,7 @@ function tidspunkt(ts) {
   }
 }
 
-// Chat med Enzo via enzo-proxy (edge-funktion → n8n-agent). Historik er lokal
+// Chat med Enzo via enzo-chat (edge-funktion → n8n-agent). Historik er lokal
 // state — Enzo har selv Postgres-memory paa backend-siden.
 function EnzoChat({ onSvar }) {
   const [beskeder, setBeskeder] = useState([])
