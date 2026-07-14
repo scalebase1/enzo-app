@@ -34,10 +34,30 @@ function EnzoChat({ onSvar }) {
   const [tekst, setTekst] = useState('')
   const [venter, setVenter] = useState(false)
   const [chatFejl, setChatFejl] = useState('')
-  // Enzos hukommelse noegles paa sessionId — en ny nulstiller hukommelsen (ikke
-  // kun UI'et), saa William faktisk kan starte forfra.
+  // Enzos hukommelse noegles paa sessionId. Vi persisterer det i localStorage pr.
+  // bruger (enzo_session_<user.id>), saa historikken overlever reload — foer fik
+  // hver sideindlaesning et nyt id, og serverens gemte historik blev aldrig laest
+  // igen. "Ny samtale" laver stadig et FRISKT id (det er meningen at den nulstiller).
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID())
+  const uidRef = useRef(null)
   const boxRef = useRef(null)
+
+  // Adopter et gemt sessionId for den aktuelle bruger; ellers persistér det friske.
+  useEffect(() => {
+    let alive = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (!alive) return
+      const uid = data.session?.user?.id
+      if (!uid) return
+      uidRef.current = uid
+      const key = `enzo_session_${uid}`
+      let gemt = null
+      try { gemt = localStorage.getItem(key) } catch { /* ignore */ }
+      if (gemt) setSessionId(gemt)
+      else { try { localStorage.setItem(key, sessionId) } catch { /* ignore */ } }
+    })
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     const el = boxRef.current
@@ -49,7 +69,11 @@ function EnzoChat({ onSvar }) {
     setBeskeder([])
     setTekst('')
     setChatFejl('')
-    setSessionId(crypto.randomUUID())
+    const nyt = crypto.randomUUID()
+    if (uidRef.current) {
+      try { localStorage.setItem(`enzo_session_${uidRef.current}`, nyt) } catch { /* ignore */ }
+    }
+    setSessionId(nyt)
   }
 
   async function send() {
