@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
-import { c, card, btn, input, font, sp } from '../ui.js'
+import { c, card, btn, btnGhost, input, font, sp } from '../ui.js'
 
 // Dansk beloeb: 180200 -> "180.200 kr". Tomt/ugyldigt -> "0 kr".
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
@@ -14,6 +14,15 @@ function LoyalBadge() {
   return (
     <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
       ★ Loyal
+    </span>
+  )
+}
+
+// Momsloven kraever koebers adresse paa fakturaen. Uden adresse kan kunden ikke faktureres.
+function ManglerAdresseBadge() {
+  return (
+    <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+      ⚠ Mangler adresse
     </span>
   )
 }
@@ -75,23 +84,117 @@ function BookingListe({ titel, rows, tom }) {
   )
 }
 
-function KundeProfil({ kunde, onClose }) {
+// Redigerbart felt i kundeprofilen. multiline -> textarea (noter).
+function RedigerFelt({ label, value, onChange, placeholder, multiline }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: 12, color: c.sub }}>{label}</label>
+      {multiline ? (
+        <textarea
+          style={{ ...input, marginBottom: 0, minHeight: 72, resize: 'vertical' }}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+        />
+      ) : (
+        <input style={{ ...input, marginBottom: 0 }} value={value} onChange={onChange} placeholder={placeholder} />
+      )}
+    </div>
+  )
+}
+
+const tomForm = (k) => ({
+  navn: k.navn || '', firma: k.firma || '', email: k.email || '',
+  telefon: k.telefon || '', adresse: k.adresse || '', noter: k.noter || '',
+})
+
+function KundeProfil({ kunde, onClose, onSaved }) {
+  const [rediger, setRediger] = useState(false)
+  const [form, setForm] = useState(() => tomForm(kunde))
+  const [busy, setBusy] = useState(false)
+  const [fejl, setFejl] = useState('')
+
+  // Skift af valgt kunde -> nulstil form/redigeringstilstand.
+  useEffect(() => {
+    setForm(tomForm(kunde))
+    setRediger(false)
+    setFejl('')
+  }, [kunde.id])
+
+  const saet = (felt) => (e) => setForm((f) => ({ ...f, [felt]: e.target.value }))
+
+  function annuller() {
+    setForm(tomForm(kunde))
+    setRediger(false)
+    setFejl('')
+  }
+
+  async function gem() {
+    setFejl('')
+    // Byg payload med DANSKE feltnavne. Kun de felter brugeren faktisk aendrede sendes.
+    const payload = { id: kunde.id }
+    for (const felt of ['navn', 'firma', 'email', 'telefon', 'adresse', 'noter']) {
+      const ny = form[felt].trim()
+      const gl = (kunde[felt] || '').trim()
+      if (ny === gl) continue
+      // Backend ignorerer tomt navn (navnet kan ikke blankes) -> undlad at sende det.
+      if (felt === 'navn' && ny === '') continue
+      payload[felt] = ny
+    }
+    const aendredeFelter = Object.keys(payload).filter((k) => k !== 'id')
+    if (aendredeFelter.length === 0) { setRediger(false); return }
+
+    setBusy(true)
+    const { data, error } = await supabase.rpc('admin_handling', {
+      p_aktion: 'kunde_opdater',
+      p_payload: payload,
+    })
+    setBusy(false)
+
+    // En fejl kan komme som `error` ELLER som `data.ok === false`. Tjek begge, vis teksten ORDRET.
+    if (error) { setFejl(error.message); return }
+    if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke gemme ændringerne.'); return }
+
+    // Succes: giv de aendrede felter videre, saa liste + profil opdateres med det samme.
+    const aendringer = {}
+    for (const k of aendredeFelter) aendringer[k] = payload[k]
+    setRediger(false)
+    onSaved(kunde.id, aendringer)
+  }
+
+  const manglerAdresse = !(kunde.adresse && String(kunde.adresse).trim())
+
   return (
     <div
-      onClick={onClose}
+      onClick={busy ? undefined : onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50, fontFamily: font }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: 600, maxWidth: '100%', maxHeight: '88vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>{kunde.navn}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-              <TypeBadge type={kunde.type} />
-              {kunde.loyal && <LoyalBadge />}
-              {kunde.firma && <span style={{ fontSize: 13, color: c.sub }}>{kunde.firma}</span>}
-            </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {rediger ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <RedigerFelt label="Navn" value={form.navn} onChange={saet('navn')} placeholder="Navn" />
+                <RedigerFelt label="Firma" value={form.firma} onChange={saet('firma')} placeholder="Firma (valgfri)" />
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>{kunde.navn}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <TypeBadge type={kunde.type} />
+                  {kunde.loyal && <LoyalBadge />}
+                  {manglerAdresse && <ManglerAdresseBadge />}
+                  {kunde.firma && <span style={{ fontSize: 13, color: c.sub }}>{kunde.firma}</span>}
+                </div>
+              </>
+            )}
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: 'pointer', padding: 0 }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!rediger && (
+              <button onClick={() => setRediger(true)} style={{ ...btnGhost, padding: '8px 14px' }}>Rediger</button>
+            )}
+            <button onClick={onClose} disabled={busy} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1, padding: 0 }}>×</button>
+          </div>
         </div>
 
         {/* Noegletal */}
@@ -105,18 +208,38 @@ function KundeProfil({ kunde, onClose }) {
         {/* Kontakt */}
         <div style={{ marginTop: 18, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
           <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Kontakt</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <Kontaktlinje label="Email" value={kunde.email} />
-            <Kontaktlinje label="Telefon" value={kunde.telefon} />
-            <Kontaktlinje label="Adresse" value={kunde.adresse} />
-            <Kontaktlinje label="Oprettet" value={fmtDato(kunde.oprettet)} />
-            {kunde.noter && (
-              <div style={{ marginTop: 4, padding: '10px 14px', background: c.bg, borderRadius: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>Noter</div>
-                <div style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{kunde.noter}</div>
+          {rediger ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <RedigerFelt label="Email" value={form.email} onChange={saet('email')} placeholder="Email" />
+              <RedigerFelt label="Telefon" value={form.telefon} onChange={saet('telefon')} placeholder="Telefon" />
+              <RedigerFelt label="Adresse" value={form.adresse} onChange={saet('adresse')} placeholder="Fakturaadresse (kræves for at fakturere)" />
+              <RedigerFelt label="Noter" value={form.noter} onChange={saet('noter')} placeholder="Interne noter" multiline />
+
+              {fejl && (
+                <div style={{ ...card, padding: '10px 14px', background: '#FEF2F2', border: `1px solid #FCA5A5`, color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                <button onClick={gem} disabled={busy} style={{ ...btn, opacity: busy ? 0.6 : 1, cursor: busy ? 'default' : 'pointer' }}>
+                  {busy ? 'Gemmer …' : 'Gem'}
+                </button>
+                <button onClick={annuller} disabled={busy} style={{ ...btnGhost, opacity: busy ? 0.6 : 1, cursor: busy ? 'default' : 'pointer' }}>Annuller</button>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <Kontaktlinje label="Email" value={kunde.email} />
+              <Kontaktlinje label="Telefon" value={kunde.telefon} />
+              <Kontaktlinje label="Adresse" value={kunde.adresse} advarsel={manglerAdresse} />
+              <Kontaktlinje label="Oprettet" value={fmtDato(kunde.oprettet)} />
+              {kunde.noter && (
+                <div style={{ marginTop: 4, padding: '10px 14px', background: c.bg, borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>Noter</div>
+                  <div style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{kunde.noter}</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <BookingListe titel="Kommende bookinger" rows={kunde.kommende} tom="Ingen kommende bookinger." />
@@ -126,22 +249,27 @@ function KundeProfil({ kunde, onClose }) {
   )
 }
 
-function Kontaktlinje({ label, value }) {
+function Kontaktlinje({ label, value, advarsel }) {
   return (
     <div style={{ fontSize: 14, display: 'flex', gap: 8 }}>
       <span style={{ color: c.sub, minWidth: 72 }}>{label}</span>
-      <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{value || '—'}</span>
+      {advarsel ? (
+        <span style={{ fontWeight: 700, color: c.red }}>Mangler — kræves for at fakturere</span>
+      ) : (
+        <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{value || '—'}</span>
+      )}
     </div>
   )
 }
 
 function KundeKort({ kunde, onClick }) {
+  const manglerAdresse = !(kunde.adresse && String(kunde.adresse).trim())
   return (
     <button
       onClick={onClick}
       style={{
         ...card, textAlign: 'left', cursor: 'pointer', fontFamily: font, display: 'flex', flexDirection: 'column', gap: 0,
-        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : `1px solid ${c.line}`,
+        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : (manglerAdresse ? `4px solid ${c.red}` : `1px solid ${c.line}`),
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -149,7 +277,10 @@ function KundeKort({ kunde, onClick }) {
           <div style={{ fontSize: 16, fontWeight: 700, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kunde.navn}</div>
           {kunde.firma && <div style={{ fontSize: 13, color: c.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kunde.firma}</div>}
         </div>
-        {kunde.loyal && <LoyalBadge />}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          {kunde.loyal && <LoyalBadge />}
+          {manglerAdresse && <ManglerAdresseBadge />}
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 14 }}>
@@ -189,6 +320,14 @@ export default function Kunder() {
 
   useEffect(() => { load() }, [load])
 
+  // Efter en gemt aendring: opdatér liste + aaben profil lokalt (danske feltnavne matcher
+  // kundeobjektet direkte), og genindlaes fra serveren saa data er autoritativt.
+  const handleSaved = useCallback((id, aendringer) => {
+    setKunder((prev) => (prev ? prev.map((k) => (k.id === id ? { ...k, ...aendringer } : k)) : prev))
+    setValgt((prev) => (prev && prev.id === id ? { ...prev, ...aendringer } : prev))
+    load()
+  }, [load])
+
   // Sorteret efter omsaetning (hoejeste foerst), filtreret paa navn/firma.
   const synlige = useMemo(() => {
     const q = soeg.trim().toLowerCase()
@@ -199,12 +338,18 @@ export default function Kunder() {
   }, [kunder, soeg])
 
   const total = kunder?.length ?? 0
+  const udenAdresse = (kunder || []).filter((k) => !(k.adresse && String(k.adresse).trim())).length
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Kunder</h1>
         {kunder && <span style={{ color: c.sub, fontSize: 14 }}>{total} kunde{total === 1 ? '' : 'r'}</span>}
+        {kunder && udenAdresse > 0 && (
+          <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: 12.5, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+            ⚠ {udenAdresse} mangler adresse
+          </span>
+        )}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>Kundeoverblik (CRM). Klik en kunde for fuld profil, bookinger og hvilke enheder de booker.</p>
 
@@ -234,7 +379,7 @@ export default function Kunder() {
         )
       )}
 
-      {valgt && <KundeProfil kunde={valgt} onClose={() => setValgt(null)} />}
+      {valgt && <KundeProfil kunde={valgt} onClose={() => setValgt(null)} onSaved={handleSaved} />}
     </div>
   )
 }
