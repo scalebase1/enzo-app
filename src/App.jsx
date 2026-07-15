@@ -14,6 +14,7 @@ import Virksomhed from './sections/Virksomhed.jsx'
 import Kladder from './sections/Kladder.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
+import Beskeder from './sections/Beskeder.jsx'
 import Notifikationer from './sections/Notifikationer.jsx'
 import { c, font, btn } from './ui.js'
 
@@ -28,6 +29,7 @@ const ALL_SECTIONS = [
   { key: 'virksomhed', label: 'Virksomhed', icon: '◫', admin: true },
   { key: 'kladder', label: 'Kladder', icon: '✎', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
+  { key: 'beskeder', label: 'Beskeder', icon: '✉', admin: false },
   { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
   { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: true },
 ]
@@ -106,6 +108,7 @@ export default function App() {
           <Route path="/virksomhed" element={adminOnly(<Virksomhed />)} />
           <Route path="/kladder" element={adminOnly(<Kladder />)} />
           <Route path="/kalender" element={<Kalender />} />
+          <Route path="/beskeder" element={<Beskeder />} />
           <Route path="/enzo" element={adminOnly(<Enzo />)} />
           <Route path="/notifikationer" element={adminOnly(<Notifikationer />)} />
           <Route path="*" element={<Navigate to={'/' + home} replace />} />
