@@ -9,6 +9,23 @@ const fmtTid = (iso) => {
   return isNaN(d) ? '—' : d.toLocaleString('da-DK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// Vagter kan ligge langt ude i fremtiden -> aaret med.
+const fmtVagtTid = (iso) => {
+  if (!iso) return 'Ukendt dato'
+  const d = new Date(iso)
+  return isNaN(d) ? 'Ukendt dato' : d.toLocaleString('da-DK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// enzo_vagtplan giver 'sted' som bookings.location — en slug ("casanova_pizza").
+// Der findes ingen mapping i databasen fra den slug til enheder.navn (enheder.id er
+// en uuid), saa vi pynter kun visuelt og paastaar ikke hvilken enhed det er.
+const pentSted = (s) => {
+  const t = (s || '').trim()
+  if (!t) return ''
+  const m = t.replace(/_/g, ' ')
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
+
 function UlaestBadge({ antal }) {
   return (
     <span style={{ background: c.blue, color: '#fff', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
@@ -119,6 +136,74 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
   )
 }
 
+// ---- Vagt-vaelger (kun admin, valgfri) ----
+//
+// Kilde: enzo_vagtplan(). Admin-grenen returnerer ALLE vagter som
+// { id, status, medarbejder, dato, sted } — vi filtrerer selv paa status='aaben'
+// (verificeret enum-vaerdi). Identiteten kommer fra JWT'en: enzo_rolle() laeser
+// er_admin()/auth.uid() og ignorerer sin p_from_id-parameter helt.
+//
+// BEMAERK: enzo_vagtplan foelger IKKE { ok, fejl }-konventionen. Den svarer
+// { rolle, vagter } eller { tilladt:false, grund } — begge tjekkes.
+function VagtVaelger({ valgtVagt, onVaelg }) {
+  const [vagter, setVagter] = useState(null)
+  const [fejl, setFejl] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    supabase.rpc('enzo_vagtplan').then(({ data, error }) => {
+      if (!alive) return
+      if (error) { setFejl(error.message); return }
+      if (!data) { setFejl('Kunne ikke hente vagtplanen.'); return }
+      if (data.tilladt === false) { setFejl(data.grund || 'Ikke autoriseret.'); return }
+      if (data.ok === false) { setFejl(data.fejl || 'Kunne ikke hente vagtplanen.'); return }
+      if (!Array.isArray(data.vagter)) { setFejl('Uventet svar fra vagtplanen.'); return }
+      setVagter(data.vagter.filter((v) => v.status === 'aaben'))
+    })
+    return () => { alive = false }
+  }, [])
+
+  if (fejl) {
+    return <div style={{ ...card, padding: '10px 14px', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
+  }
+  if (vagter === null) {
+    return <div style={{ color: c.sub, fontSize: 14 }}>Henter åbne vagter …</div>
+  }
+  if (vagter.length === 0) {
+    return (
+      <div style={{ padding: '12px 14px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>
+        Ingen åbne vagter lige nu.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ border: `1px solid ${c.line}`, borderRadius: 10, overflow: 'hidden' }}>
+      {vagter.map((v, i) => {
+        const sted = pentSted(v.sted)
+        return (
+          <label
+            key={v.id}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', cursor: 'pointer', fontSize: 14 }}
+          >
+            <input
+              type="radio"
+              name="vagt"
+              checked={valgtVagt === v.id}
+              onChange={() => onVaelg(v.id)}
+              style={{ margin: 0 }}
+            />
+            <span>
+              <span style={{ fontWeight: 600 }}>{fmtVagtTid(v.dato)}</span>
+              {sted && <span style={{ color: c.sub }}> · {sted}</span>}
+            </span>
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
 // ---- Ny besked (kun admin) ----
 
 function NyBesked({ onClose, onSendt }) {
@@ -129,6 +214,8 @@ function NyBesked({ onClose, onSendt }) {
   const [tekst, setTekst] = useState('')
   const [busy, setBusy] = useState(false)
   const [fejl, setFejl] = useState('')
+  const [vedhaeft, setVedhaeft] = useState(false)
+  const [valgtVagt, setValgtVagt] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -150,11 +237,17 @@ function NyBesked({ onClose, onSendt }) {
   async function send() {
     if (busy) return
     setBusy(true); setFejl('')
+    // Vedhaeftet vagt -> handlingsknap hos modtageren. Formen skal vaere praecis
+    // { type, shift_id, label }; label saettes altid (backend haandhaever den ikke).
+    // Ingen vagt valgt -> p_handling=null, uaendret v1-adfaerd.
+    const handling = (vedhaeft && valgtVagt)
+      ? { type: 'vagt_tag', shift_id: valgtVagt, label: 'Tag vagten' }
+      : null
     const { data, error } = await supabase.rpc('besked_send', {
       p_staff_ids: valgte,
       p_tekst: tekst,
       p_emne: emne.trim() || null,
-      p_handling: null,
+      p_handling: handling,
       p_booking_id: null,
     })
     setBusy(false)
@@ -206,6 +299,32 @@ function NyBesked({ onClose, onSendt }) {
             onChange={(e) => setTekst(e.target.value)}
             placeholder="Skriv beskeden …"
           />
+        </div>
+
+        <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
+          {!vedhaeft ? (
+            <button onClick={() => setVedhaeft(true)} style={{ ...btnGhost, padding: '9px 14px' }}>
+              + Vedhæft en åben vagt
+            </button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>Vedhæft vagt</div>
+                <button
+                  onClick={() => { setVedhaeft(false); setValgtVagt(null) }}
+                  style={{ border: 'none', background: 'transparent', color: c.slate2, fontSize: 13, cursor: 'pointer', padding: 0 }}
+                >
+                  Fjern
+                </button>
+              </div>
+              <VagtVaelger valgtVagt={valgtVagt} onVaelg={setValgtVagt} />
+              <div style={{ fontSize: 12.5, color: c.sub, marginTop: 8 }}>
+                {valgtVagt
+                  ? 'Modtageren får knappen “Tag vagten” i beskeden.'
+                  : 'Vælg en vagt for at give modtageren en “Tag vagten”-knap. Uden valg sendes beskeden som ren tekst.'}
+              </div>
+            </>
+          )}
         </div>
 
         {fejl && (
