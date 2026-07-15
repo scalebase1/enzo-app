@@ -16,15 +16,6 @@ const fmtVagtTid = (iso) => {
   return isNaN(d) ? 'Ukendt dato' : d.toLocaleString('da-DK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// enzo_vagtplan giver 'sted' som bookings.location — en slug ("casanova_pizza").
-// Der findes ingen mapping i databasen fra den slug til enheder.navn (enheder.id er
-// en uuid), saa vi pynter kun visuelt og paastaar ikke hvilken enhed det er.
-const pentSted = (s) => {
-  const t = (s || '').trim()
-  if (!t) return ''
-  const m = t.replace(/_/g, ' ')
-  return m.charAt(0).toUpperCase() + m.slice(1)
-}
 
 function UlaestBadge({ antal }) {
   return (
@@ -139,9 +130,10 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
 // ---- Vagt-vaelger (kun admin, valgfri) ----
 //
 // Kilde: enzo_vagtplan(). Admin-grenen returnerer ALLE vagter som
-// { id, status, medarbejder, dato, sted } — vi filtrerer selv paa status='aaben'
-// (verificeret enum-vaerdi). Identiteten kommer fra JWT'en: enzo_rolle() laeser
-// er_admin()/auth.uid() og ignorerer sin p_from_id-parameter helt.
+// { id, status, medarbejder, dato, sted, sted_slug, er_fortid } — vi filtrerer selv
+// til aabne, ikke-overstaaede. 'sted' er et faerdigt enhedsnavn fra backend
+// (pent_stednavn); det vises som det er. Identiteten kommer fra JWT'en: enzo_rolle()
+// laeser er_admin()/auth.uid() og ignorerer sin p_from_id-parameter helt.
 //
 // BEMAERK: enzo_vagtplan foelger IKKE { ok, fejl }-konventionen. Den svarer
 // { rolle, vagter } eller { tilladt:false, grund } — begge tjekkes.
@@ -158,7 +150,9 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
       if (data.tilladt === false) { setFejl(data.grund || 'Ikke autoriseret.'); return }
       if (data.ok === false) { setFejl(data.fejl || 'Kunne ikke hente vagtplanen.'); return }
       if (!Array.isArray(data.vagter)) { setFejl('Uventet svar fra vagtplanen.'); return }
-      setVagter(data.vagter.filter((v) => v.status === 'aaben'))
+      // Kun aabne vagter der ikke er overstaaet. er_fortid kan vaere null hvis
+      // bookingen mangler -> !== true, saa den kun filtrerer paa et sikkert ja.
+      setVagter(data.vagter.filter((v) => v.status === 'aaben' && v.er_fortid !== true))
     })
     return () => { alive = false }
   }, [])
@@ -172,7 +166,7 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
   if (vagter.length === 0) {
     return (
       <div style={{ padding: '12px 14px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>
-        Ingen åbne vagter lige nu.
+        Ingen kommende åbne vagter.
       </div>
     )
   }
@@ -180,7 +174,7 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
   return (
     <div style={{ border: `1px solid ${c.line}`, borderRadius: 10, overflow: 'hidden' }}>
       {vagter.map((v, i) => {
-        const sted = pentSted(v.sted)
+        const sted = (v.sted || '').trim()
         return (
           <label
             key={v.id}
