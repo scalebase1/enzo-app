@@ -83,6 +83,22 @@ function EnhedInfoLinje({ enhed, info }) {
 // Renser titel for teknisk stoej og "❌ AFLYST —"-praefiks til visning.
 const renTitel = (t) => (t || '').replace(/^❌\s*AFLYST\s*—\s*/i, '').trim()
 
+// kalender_bookinger/RPC'erne leverer 'koncepter' som array af pæne navne
+// (fx ["Casanova","The Blue Pearl"]) — det fulde saet inkl. ekstra koncepter.
+// Kan vaere tom (booking uden location). Vi surfacer KUN det ekstra: ved ét
+// koncept viser titel/enhed det allerede.
+const konceptListe = (b) => (Array.isArray(b?.koncepter) ? b.koncepter : [])
+const flereKoncepter = (b) => konceptListe(b).length > 1
+
+// Lille neutralt koncept-tag til modalens fulde saet.
+function KonceptTag({ navn }) {
+  return (
+    <span style={{ background: '#F1F5F9', color: c.slate2, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+      {navn}
+    </span>
+  )
+}
+
 // ---- Genbrugelig maaneds-grid (controlled cursor). events: normaliserede
 // { key, start:Date, chip:{ tid?, label, tone, struck }, raw }. onSelect(raw). ----
 function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
@@ -165,17 +181,24 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                     <button
                       key={e.key}
                       onClick={(ev) => { ev.stopPropagation(); onSelect(e.raw) }}
-                      title={e.chip.label}
+                      title={e.chip.koncepter ? `${e.chip.label} — ${e.chip.koncepter.join(', ')}` : e.chip.label}
                       style={{
                         width: '100%', textAlign: 'left', border: 'none', borderRadius: 6,
                         padding: '3px 6px', fontSize: 11.5, lineHeight: 1.3, cursor: 'pointer',
-                        fontFamily: font, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+                        fontFamily: font, overflow: 'hidden', display: 'block',
                         background: t.background, color: t.color, borderLeft: `3px solid ${t.border}`,
                         textDecoration: e.chip.struck ? 'line-through' : 'none',
                       }}
                     >
-                      {e.chip.tid && <span style={{ fontWeight: 700 }}>{e.chip.tid} </span>}
-                      {e.chip.label}
+                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.chip.tid && <span style={{ fontWeight: 700 }}>{e.chip.tid} </span>}
+                        {e.chip.label}
+                      </span>
+                      {e.chip.koncepter && (
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, fontWeight: 600, opacity: 0.85 }}>
+                          {e.chip.koncepter.join(', ')}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -346,6 +369,12 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
           <button style={{ ...btnGhost, padding: '6px 12px', fontSize: 13, marginLeft: 'auto' }} onClick={onRediger}>Rediger</button>
         )}
       </div>
+      {flereKoncepter(booking) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: c.sub }}>Koncepter:</span>
+          {konceptListe(booking).map((k) => <KonceptTag key={k} navn={k} />)}
+        </div>
+      )}
       <div style={{ fontSize: 14, color: c.text, marginTop: 12 }}>
         {fmtDag(start)}<br />
         <span style={{ color: c.sub }}>kl. {fmtTid(start)}–{fmtTid(slut)}</span>
@@ -821,7 +850,7 @@ function AdminKalender() {
     return {
       key: b.booking_id,
       start,
-      chip: { tid: fmtTid(start), label: renTitel(b.titel), tone: b.aflyst ? 'slate' : (farver.get(b.enhed) || UDEN_ENHED_FARVE), struck: b.aflyst },
+      chip: { tid: fmtTid(start), label: renTitel(b.titel), tone: b.aflyst ? 'slate' : (farver.get(b.enhed) || UDEN_ENHED_FARVE), struck: b.aflyst, koncepter: flereKoncepter(b) ? konceptListe(b) : null },
       raw: b,
     }
   }), [synlige, farver])
