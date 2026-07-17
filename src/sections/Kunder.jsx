@@ -56,7 +56,15 @@ function Noegletal({ label, value }) {
   )
 }
 
-// koncept-feltet ér enheden (Casanova/The Blue Pearl/...) — vises som "Enhed".
+// crm_data giver pr. booking 'koncepter' (array af pæne navne, fuldt sæt) ved
+// siden af det gamle enkelt-felt 'koncept'. Vis hele sættet; fald tilbage på
+// 'koncept' hvis arrayet mangler/er tomt (fx et gammelt cachet svar).
+const konceptListe = (b) => (Array.isArray(b?.koncepter) ? b.koncepter.filter(Boolean) : [])
+const konceptTekst = (b) => {
+  const arr = konceptListe(b)
+  return arr.length > 0 ? arr.join(', ') : (b?.koncept || '—')
+}
+
 function BookingListe({ titel, rows, tom }) {
   return (
     <div style={{ marginTop: 18 }}>
@@ -70,7 +78,7 @@ function BookingListe({ titel, rows, tom }) {
               <div style={{ minWidth: 120, flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtDato(b.dato)}</div>
                 <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
-                  <span style={{ color: c.slate2, fontWeight: 600 }}>Enhed:</span> {b.koncept || '—'}
+                  <span style={{ color: c.slate2, fontWeight: 600 }}>{konceptListe(b).length > 1 ? 'Koncepter:' : 'Koncept:'}</span> {konceptTekst(b)}
                 </div>
               </div>
               <div style={{ fontSize: 13, color: c.slate2, minWidth: 74, textAlign: 'right' }}>{b.covers != null ? `${b.covers} kuv.` : '—'}</div>
