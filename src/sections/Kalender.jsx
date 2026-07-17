@@ -364,7 +364,6 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
             {booking.enhed}{booking.enhed_type ? ` · ${booking.enhed_type}` : ''}
           </span>
         )}
-        {booking.lokation && <span style={{ fontSize: 13, color: c.sub }}>{booking.lokation}</span>}
         {!booking.aflyst && onRediger && (
           <button style={{ ...btnGhost, padding: '6px 12px', fontSize: 13, marginLeft: 'auto' }} onClick={onRediger}>Rediger</button>
         )}
