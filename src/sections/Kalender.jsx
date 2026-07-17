@@ -446,7 +446,298 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
         })}
         {vagtFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red }}>{vagtFejl}</div>}
       </div>
+
+      <IndkoebSektion bookingId={booking.booking_id} />
+      <OekonomiSektion bookingId={booking.booking_id} />
     </Modal>
+  )
+}
+
+// ---------------- Indkøbsliste + økonomi (admin, på booking-detaljen) ----------------
+
+// Beloeb: null/undefined -> '—' (ALDRIG "0 kr" naar data bare mangler).
+const fmtKr = (n) => (n == null ? '—' : `${Number(n).toLocaleString('da-DK', { maximumFractionDigits: 2 })} kr`)
+const fmtPct = (n) => (n == null ? null : `${Number(n).toLocaleString('da-DK', { maximumFractionDigits: 1 })}%`)
+
+const SEKTION_STIL = { marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }
+const SEKTION_TITEL = { fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }
+
+function IndkoebSektion({ bookingId }) {
+  const [loading, setLoading] = useState(true)
+  const [fejl, setFejl] = useState('')          // hent-fejl (vises i stedet for listen)
+  const [items, setItems] = useState([])        // [{ vare, maengde, koebt }]
+  const [godkendt, setGodkendt] = useState(false)
+  const [opdateret, setOpdateret] = useState(null)
+  const [note, setNote] = useState('')          // forslags-note
+  const [busy, setBusy] = useState(null)        // 'forslag' | 'gem'
+  const [handlingFejl, setHandlingFejl] = useState('')
+  const [kvittering, setKvittering] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    supabase.rpc('indkoeb_hent', { p_booking_id: bookingId }).then(({ data, error }) => {
+      if (!alive) return
+      setLoading(false)
+      if (error) { setFejl(error.message); return }
+      if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke hente indkøbslisten.'); return }
+      setItems(Array.isArray(data.items) ? data.items : [])
+      setGodkendt(data.godkendt === true)
+      setOpdateret(data.opdateret || null)
+    })
+    return () => { alive = false }
+  }, [bookingId])
+
+  const saetItem = (i, felt, vaerdi) =>
+    setItems((rows) => rows.map((r, ix) => (ix === i ? { ...r, [felt]: vaerdi } : r)))
+  const fjern = (i) => setItems((rows) => rows.filter((_, ix) => ix !== i))
+  const tilfoej = () => setItems((rows) => [...rows, { vare: '', maengde: '', koebt: false }])
+
+  async function foreslaa() {
+    setBusy('forslag'); setHandlingFejl(''); setKvittering('')
+    const { data, error } = await supabase.rpc('indkoeb_forslag', { p_booking_id: bookingId })
+    setBusy(null)
+    if (error) { setHandlingFejl(error.message); return }
+    if (!data || data.ok === false) { setHandlingFejl(data?.fejl || 'Kunne ikke lave et forslag.'); return }
+    setItems(Array.isArray(data.forslag) ? data.forslag : [])
+    setNote(data.note || '')
+  }
+
+  async function gem() {
+    setBusy('gem'); setHandlingFejl(''); setKvittering('')
+    // Helt tomme raekker (hverken vare eller maengde) er UI-rester — de gemmes ikke.
+    const rene = items
+      .map((r) => ({ vare: (r.vare || '').trim(), maengde: (r.maengde || '').trim(), koebt: r.koebt === true }))
+      .filter((r) => r.vare !== '' || r.maengde !== '')
+    const { data, error } = await supabase.rpc('indkoeb_gem', {
+      p_booking_id: bookingId,
+      p_items: rene,
+      p_godkendt: godkendt,
+    })
+    setBusy(null)
+    if (error) { setHandlingFejl(error.message); return }
+    if (!data || data.ok === false) { setHandlingFejl(data?.fejl || 'Kunne ikke gemme listen.'); return }
+    setItems(rene)
+    setKvittering(`Gemt — ${data.antal_varer} ${data.antal_varer === 1 ? 'vare' : 'varer'}.`)
+  }
+
+  const koebte = items.filter((r) => r.koebt === true).length
+  const inputU = { ...input, marginBottom: 0, padding: '8px 10px' }
+
+  return (
+    <div style={SEKTION_STIL}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div style={SEKTION_TITEL}>Indkøbsliste</div>
+        {items.length > 0 && (
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: koebte === items.length ? c.green : c.slate2 }}>
+            {koebte} af {items.length} varer købt
+          </div>
+        )}
+      </div>
+
+      {loading && <div style={{ color: c.sub, fontSize: 14 }}>Henter indkøbsliste …</div>}
+      {fejl && <div style={{ color: c.red, fontSize: 13, whiteSpace: 'pre-wrap' }}>{fejl}</div>}
+
+      {!loading && !fejl && (
+        <>
+          {items.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ color: c.sub, fontSize: 14 }}>Ingen indkøbsliste endnu.</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button style={{ ...btn, padding: '9px 14px', opacity: busy ? 0.6 : 1 }} disabled={!!busy} onClick={foreslaa}>
+                  {busy === 'forslag' ? 'Foreslår …' : 'Foreslå indkøbsliste'}
+                </button>
+                <button style={{ ...btnGhost, padding: '9px 14px' }} disabled={!!busy} onClick={tilfoej}>
+                  + Tilføj vare
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {note && (
+                <div style={{ marginBottom: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+                  {note}
+                </div>
+              )}
+              {items.map((r, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={r.koebt === true}
+                    onChange={(e) => saetItem(i, 'koebt', e.target.checked)}
+                    style={{ margin: 0, flexShrink: 0 }}
+                    title="Købt"
+                  />
+                  <input
+                    style={{ ...inputU, flex: 2, minWidth: 0, textDecoration: r.koebt ? 'line-through' : 'none' }}
+                    value={r.vare || ''}
+                    onChange={(e) => saetItem(i, 'vare', e.target.value)}
+                    placeholder="Vare"
+                  />
+                  <input
+                    style={{ ...inputU, flex: 1, minWidth: 0 }}
+                    value={r.maengde || ''}
+                    onChange={(e) => saetItem(i, 'maengde', e.target.value)}
+                    placeholder="Mængde"
+                  />
+                  <button
+                    onClick={() => fjern(i)}
+                    disabled={!!busy}
+                    title="Fjern vare"
+                    style={{ border: 'none', background: 'transparent', color: c.slate2, fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <button style={{ ...btnGhost, padding: '8px 12px' }} disabled={!!busy} onClick={tilfoej}>+ Tilføj vare</button>
+                <button style={{ ...btn, padding: '8px 14px', opacity: busy ? 0.6 : 1 }} disabled={!!busy} onClick={gem}>
+                  {busy === 'gem' ? 'Gemmer …' : 'Gem'}
+                </button>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: c.text, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={godkendt} onChange={(e) => setGodkendt(e.target.checked)} style={{ margin: 0 }} />
+                  Markér som godkendt
+                </label>
+              </div>
+            </>
+          )}
+
+          {handlingFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red, whiteSpace: 'pre-wrap' }}>{handlingFejl}</div>}
+          {kvittering && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 700, color: c.green }}>{kvittering}</div>}
+          {opdateret && !kvittering && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: c.sub }}>
+              Sidst gemt {new Date(opdateret).toLocaleString('da-DK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{godkendt ? ' · godkendt' : ''}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// Diskret farve paa daekningsgraden: sund groen, tynd amber, negativ roed.
+const gradFarve = (pct) => (pct == null ? c.sub : pct < 0 ? c.red : pct < 25 ? c.amber : pct < 50 ? c.slate2 : c.green)
+
+function OekonomiSektion({ bookingId }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [fejl, setFejl] = useState('')
+  const [vareInput, setVareInput] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [saetFejl, setSaetFejl] = useState('')
+
+  const beregn = useCallback(async () => {
+    setFejl('')
+    const { data: d, error } = await supabase.rpc('beregn_daekningsbidrag', { p_booking_id: bookingId })
+    setLoading(false)
+    if (error) { setFejl(error.message); return null }
+    if (!d || d.ok === false) { setFejl(d?.fejl || 'Kunne ikke beregne dækningsbidraget.'); return null }
+    setData(d)
+    return d
+  }, [bookingId])
+
+  useEffect(() => {
+    let alive = true
+    beregn().then((d) => {
+      // Forudfyld feltet med den gemte vaerdi (kun ved foerste hent).
+      if (alive && d && d.vareomkostning != null) {
+        setVareInput(String(d.vareomkostning).replace('.', ','))
+      }
+    })
+    return () => { alive = false }
+  }, [beregn])
+
+  async function gemVareomkostning() {
+    setSaetFejl('')
+    // Dansk talformat: "7.000,50" og "7000,50" virker; "7.000" er tusindtal;
+    // rent punktum-decimal ("7000.5") accepteres ogsaa. Tomt felt er ikke et beloeb.
+    let t = vareInput.trim()
+    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '')
+    const belob = Number(t)
+    if (t === '' || Number.isNaN(belob)) {
+      setSaetFejl('Skriv et beløb, fx 7000 eller 7.000,50.')
+      return
+    }
+    setBusy(true)
+    const { data: d, error } = await supabase.rpc('booking_saet_vareomkostning', {
+      p_booking_id: bookingId,
+      p_vareomkostning: belob,
+    })
+    if (error) { setBusy(false); setSaetFejl(error.message); return }
+    if (!d || d.ok === false) { setBusy(false); setSaetFejl(d?.fejl || 'Kunne ikke gemme vareomkostningen.'); return }
+    await beregn()   // genberegn med den nye omkostning
+    setBusy(false)
+  }
+
+  const linjeStil = { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, padding: '3px 0' }
+  const mangler = Array.isArray(data?.mangler) ? data.mangler : []
+  const dbKlar = data && data.daekningsbidrag != null
+
+  return (
+    <div style={SEKTION_STIL}>
+      <div style={SEKTION_TITEL}>Økonomi / dækningsbidrag</div>
+
+      {loading && <div style={{ color: c.sub, fontSize: 14 }}>Beregner …</div>}
+      {fejl && <div style={{ color: c.red, fontSize: 13, whiteSpace: 'pre-wrap' }}>{fejl}</div>}
+
+      {!loading && !fejl && data && (
+        <>
+          <div style={linjeStil}>
+            <span style={{ color: c.sub }}>Pris (ex moms)</span>
+            <span style={{ fontWeight: 600 }}>{fmtKr(data.pris_ex_moms)}</span>
+          </div>
+          <div style={linjeStil}>
+            <span style={{ color: c.sub }}>− Løn</span>
+            <span style={{ fontWeight: 600 }}>{fmtKr(data.loenomkostning)}</span>
+          </div>
+          <div style={linjeStil}>
+            <span style={{ color: c.sub }}>− Vareomkostning</span>
+            <span style={{ fontWeight: 600 }}>{fmtKr(data.vareomkostning)}</span>
+          </div>
+          <div style={{ ...linjeStil, borderTop: `1px solid ${c.line}`, marginTop: 4, paddingTop: 8 }}>
+            <span style={{ fontWeight: 700 }}>= Dækningsbidrag</span>
+            <span style={{ textAlign: 'right' }}>
+              <span style={{ fontWeight: 800, color: dbKlar && data.daekningsbidrag < 0 ? c.red : c.ink }}>
+                {fmtKr(data.daekningsbidrag)}
+              </span>
+              {dbKlar && (data.daekningsgrad_pct != null || data.db_pr_gaest != null) && (
+                <span style={{ fontSize: 12.5, color: gradFarve(data.daekningsgrad_pct), marginLeft: 6 }}>
+                  ({[fmtPct(data.daekningsgrad_pct), data.db_pr_gaest != null ? `${Number(data.db_pr_gaest).toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr/gæst` : null].filter(Boolean).join(' · ')})
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Systemets aerlige besked naar tallet ikke er fuldt endnu — aldrig et falsk 0. */}
+          {data.note && (
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+              {data.note}
+            </div>
+          )}
+          {!data.note && mangler.length > 0 && (
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+              Mangler: {mangler.join(', ')} — dækningsbidraget kan ikke beregnes endnu.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <input
+              style={{ ...input, marginBottom: 0, padding: '8px 10px', flex: 1, minWidth: 0 }}
+              value={vareInput}
+              onChange={(e) => setVareInput(e.target.value)}
+              placeholder="Vareomkostning i kr (ex moms), fx 7000"
+              inputMode="decimal"
+            />
+            <button style={{ ...btn, padding: '8px 14px', opacity: busy ? 0.6 : 1 }} disabled={busy} onClick={gemVareomkostning}>
+              {busy ? 'Gemmer …' : 'Gem'}
+            </button>
+          </div>
+          {saetFejl && <div style={{ marginTop: 8, fontSize: 13, color: c.red, whiteSpace: 'pre-wrap' }}>{saetFejl}</div>}
+        </>
+      )}
+    </div>
   )
 }
 
