@@ -4,6 +4,7 @@ import { supabase, authLandingType } from './supabaseClient.js'
 import Login from './components/Login.jsx'
 import SetPassword from './components/SetPassword.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import Forside from './sections/Forside.jsx'
 import Overblik from './sections/Overblik.jsx'
 import Medarbejdere from './sections/Medarbejdere.jsx'
 import Kunder from './sections/Kunder.jsx'
@@ -20,6 +21,7 @@ import { c, font, btn } from './ui.js'
 
 // admin:true = kun admin (William). admin:false = admin + medarbejder.
 const ALL_SECTIONS = [
+  { key: 'forside', label: 'Forside', icon: '⌂', admin: false },
   { key: 'overblik', label: 'Overblik', icon: '▦', admin: true },
   { key: 'medarbejdere', label: 'Medarbejdere', icon: '◉', admin: true },
   { key: 'kunder', label: 'Kunder', icon: '◎', admin: true },
@@ -90,7 +92,8 @@ export default function App() {
   if (role === 'none') return <NoAccess email={session.user.email} />
 
   const sections = ALL_SECTIONS.filter((s) => role === 'admin' || !s.admin)
-  const home = role === 'admin' ? 'overblik' : 'kalender'
+  // Forsiden er foerste skaerm efter login for begge roller.
+  const home = 'forside'
   const adminOnly = (el) => (role === 'admin' ? el : <Navigate to={'/' + home} replace />)
 
   return (
@@ -99,6 +102,7 @@ export default function App() {
       <main style={{ flex: 1, padding: '28px 32px', overflow: 'auto' }}>
         <Routes>
           <Route path="/" element={<Navigate to={'/' + home} replace />} />
+          <Route path="/forside" element={<Forside />} />
           <Route path="/overblik" element={adminOnly(<Overblik />)} />
           <Route path="/medarbejdere" element={adminOnly(<Medarbejdere />)} />
           <Route path="/kunder" element={adminOnly(<Kunder />)} />
