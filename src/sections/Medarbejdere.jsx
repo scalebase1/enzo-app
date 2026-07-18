@@ -6,6 +6,13 @@ import { useSmalSkaerm } from '../komponenter/useSmalSkaerm.js'
 
 const ONBOARD = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/medarbejder-onboard'
 
+// Bevarer overstyringen: onboarding_status 'aktiv' men active=false => "inaktiv".
+// Kun naar der IKKE overstyres bruger vi backendens status_tekst.
+function Badge({ status, aktiv, tekst }) {
+  return (status === 'aktiv' && !aktiv)
+    ? <StatusChip status="inaktiv" tekst="inaktiv" />
+    : <StatusChip status={status} tekst={tekst} />
+}
 
 // Uden login endnu → kan inviteres.
 const kanInviteres = (status) => status === 'afventer_medarbejder' || status === 'afventer_godkendelse'
