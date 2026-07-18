@@ -13,6 +13,7 @@ import Fakturaer from './sections/Fakturaer.jsx'
 import Loen from './sections/Loen.jsx'
 import Viden from './sections/Viden.jsx'
 import Virksomhed from './sections/Virksomhed.jsx'
+import Madkoncepter from './sections/Madkoncepter.jsx'
 import Kladder from './sections/Kladder.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
@@ -30,6 +31,7 @@ const ALL_SECTIONS = [
   { key: 'loen', label: 'Løn', icon: '¤', admin: true },
   { key: 'viden', label: 'Viden', icon: '◈', admin: true },
   { key: 'virksomhed', label: 'Virksomhed', icon: '◫', admin: true },
+  { key: 'madkoncepter', label: 'Madkoncepter', icon: '❖', admin: true },
   { key: 'kladder', label: 'Kladder', icon: '✎', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
   { key: 'beskeder', label: 'Beskeder', icon: '✉', admin: false },
@@ -122,6 +124,7 @@ export default function App() {
           <Route path="/loen" element={adminOnly(<Loen />)} />
           <Route path="/viden" element={adminOnly(<Viden />)} />
           <Route path="/virksomhed" element={adminOnly(<Virksomhed />)} />
+          <Route path="/madkoncepter" element={adminOnly(<Madkoncepter />)} />
           <Route path="/kladder" element={adminOnly(<Kladder />)} />
           <Route path="/kalender" element={<Kalender />} />
           <Route path="/beskeder" element={<Beskeder />} />
