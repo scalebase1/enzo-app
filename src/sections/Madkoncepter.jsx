@@ -38,8 +38,11 @@ export default function Madkoncepter() {
   const [fejl, setFejl] = useState('')        // backendens tekst, ORDRET
   const [kvittering, setKvittering] = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true); setHentFejl('')
+  // Genindlaesning maa ikke skjule listen (loading gater kun foerste hentning),
+  // ellers forsvinder og genopstaar raekkerne ved hver flytning.
+  const load = useCallback(async ({ foerste = false } = {}) => {
+    if (foerste) setLoading(true)
+    setHentFejl('')
     const { data, error } = await supabase.rpc('madkoncept_liste')
     setLoading(false)
     if (error) { setHentFejl(error.message); return }
@@ -47,7 +50,7 @@ export default function Madkoncepter() {
     setKoncepter(data.koncepter || [])   // RPC'en sorterer allerede (sortering, navn)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load({ foerste: true }) }, [load])
 
   // Faelles svar-tjek: fejl kan komme som `error` ELLER som data.ok === false.
   function tjek(data, error, fallback) {
@@ -103,16 +106,19 @@ export default function Madkoncepter() {
     const ny = koncepter.slice()
     const tmp = ny[index]; ny[index] = ny[j]; ny[j] = tmp
 
-    // Kun de raekker hvis sortering faktisk aendrer sig.
-    const aendringer = ny
-      .map((k, i) => ({ k, nySort: RENUM(i) }))
-      .filter(({ k, nySort }) => k.sortering !== nySort)
+    // Renummerér, og skriv de nye vaerdier IND i den lokale state.
+    // Uden det beholdt raekkerne deres gamle 'sortering' efter en optimistisk
+    // flytning: naeste klik beregnede saa sin diff mod foraeldede tal, fandt
+    // "ingen aendring", sendte intet — og listen hoppede tilbage ved reload,
+    // som om den forkerte raekke var flyttet.
+    const opdateret = ny.map((k, i) => ({ ...k, sortering: RENUM(i) }))
+    const aendringer = opdateret.filter((k, i) => k.sortering !== ny[i].sortering)
     if (aendringer.length === 0) return
 
     setBusy(tmp.id); setFejl(''); setKvittering('')
-    setKoncepter(ny)   // optimistisk, saa raekken flytter sig med det samme
-    for (const { k, nySort } of aendringer) {
-      const { data, error } = await supabase.rpc('madkoncept_opdater', { p_id: k.id, p_sortering: nySort })
+    setKoncepter(opdateret)   // optimistisk OG konsistent
+    for (const k of aendringer) {
+      const { data, error } = await supabase.rpc('madkoncept_opdater', { p_id: k.id, p_sortering: k.sortering })
       const f = tjek(data, error, 'Kunne ikke ændre rækkefølgen.')
       if (f) { setBusy(null); setFejl(f); load(); return }
     }
