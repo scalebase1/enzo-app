@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font, sp } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
+import { tone } from '../ui.js'
 
 // Tidsstempler kommer som fuld ISO 8601 m. offset (RPC'erne koerer i Europe/Copenhagen).
 const fmtTid = (iso) => {
@@ -18,19 +20,11 @@ const fmtVagtTid = (iso) => {
 
 
 function UlaestBadge({ antal }) {
-  return (
-    <span style={{ background: c.blue, color: '#fff', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      {antal}
-    </span>
-  )
+  return <StatusChip tekst={String(antal)} farve={{ bg: c.accent, col: '#fff' }} />
 }
 
 function BroadcastBadge() {
-  return (
-    <span style={{ background: '#E8F0FE', color: '#1E3A8A', fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      Flere modtagere
-    </span>
-  )
+  return <StatusChip tekst="Flere modtagere" farve={tone.aktiv} />
 }
 
 // Williams overblik: { sendt, laest, handlet, har_handlet? }. Kun til admin.
@@ -40,7 +34,7 @@ function Kvittering({ kvittering, visNavne }) {
   return (
     <div style={{ fontSize: 11.5, color: c.sub }}>
       Sendt til {kvittering.sendt} · læst af {kvittering.laest} · handlet {kvittering.handlet}
-      {navne.length > 0 && <span style={{ color: c.green, fontWeight: 700 }}> ({navne.join(', ')})</span>}
+      {navne.length > 0 && <span style={{ color: c.green, fontWeight: 500 }}> ({navne.join(', ')})</span>}
     </div>
   )
 }
@@ -52,7 +46,7 @@ function Handling({ besked, busy, onUdfoer }) {
   if (!besked.handling || !t || t === 'admin') return null
 
   if (t === 'udfoert') {
-    return <div style={{ fontSize: 12.5, fontWeight: 700, color: c.green }}>✓ Udført</div>
+    return <div style={{ fontSize: 12.5, fontWeight: 500, color: c.green }}>✓ Udført</div>
   }
   if (t === 'ikke_mulig') {
     return <div style={{ fontSize: 12.5, color: c.sub }}>Ikke længere mulig.</div>
@@ -75,7 +69,7 @@ function BeskedBoble({ besked, erAdmin, busy, fejl, onUdfoer }) {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: mig ? 'flex-end' : 'flex-start', gap: 5 }}>
       <div style={{ fontSize: 11, color: c.sub }}>{besked.afsender || '—'} · {fmtTid(besked.tidspunkt)}</div>
       <div style={{
-        maxWidth: '82%', background: mig ? c.blue : '#F1F5F9', color: mig ? '#fff' : c.ink,
+        maxWidth: '82%', background: mig ? c.blue : '#F2F1ED', color: mig ? '#fff' : c.ink,
         padding: '10px 14px', borderRadius: 12, fontSize: 14, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
         {besked.tekst}
       </div>
@@ -94,12 +88,12 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', fontFamily: font, cursor: 'pointer', display: 'block',
-        background: valgt ? '#EEF2F7' : 'transparent', border: 'none',
+        background: valgt ? '#F2F1ED' : 'transparent', border: 'none',
         borderLeft: valgt ? `3px solid ${c.blue}` : '3px solid transparent',
         borderBottom: `1px solid ${c.line}`, padding: '12px 14px' }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: ulaeste > 0 ? 800 : 700, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 14, fontWeight: ulaeste > 0 ? 500 : 400, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {traad.emne}
         </div>
         {ulaeste > 0 && <UlaestBadge antal={ulaeste} />}
@@ -162,7 +156,7 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
   }
   if (vagter.length === 0) {
     return (
-      <div style={{ padding: '12px 14px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>
+      <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15, background: c.card }}>
         Ingen kommende åbne vagter.
       </div>
     )
@@ -185,7 +179,7 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
               style={{ margin: 0 }}
             />
             <span>
-              <span style={{ fontWeight: 600 }}>{fmtVagtTid(v.dato)}</span>
+              <span style={{ fontWeight: 500 }}>{fmtVagtTid(v.dato)}</span>
               {sted && <span style={{ color: c.sub }}> · {sted}</span>}
             </span>
           </label>
@@ -253,7 +247,7 @@ function NyBesked({ onClose, onSendt }) {
     >
       <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: 560, maxWidth: '100%', maxHeight: '88vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: c.ink }}>Ny besked</div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: c.ink }}>Ny besked</div>
           <button onClick={onClose} disabled={busy} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1, padding: 0 }}>×</button>
         </div>
 
@@ -261,7 +255,7 @@ function NyBesked({ onClose, onSendt }) {
         {hentFejl && <div style={{ ...card, padding: '10px 14px', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{hentFejl}</div>}
         {!hentFejl && medarbejdere === null && <div style={{ color: c.sub, fontSize: 14 }}>Henter medarbejdere …</div>}
         {!hentFejl && medarbejdere !== null && aktive.length === 0 && (
-          <div style={{ padding: '12px 14px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>
+          <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15, background: c.card }}>
             Ingen aktive medarbejdere at sende til. Inviter dem under Medarbejdere først.
           </div>
         )}
@@ -270,7 +264,7 @@ function NyBesked({ onClose, onSendt }) {
             {aktive.map((m, i) => (
               <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', cursor: 'pointer', fontSize: 14 }}>
                 <input type="checkbox" checked={valgte.includes(m.id)} onChange={() => toggle(m.id)} style={{ margin: 0 }} />
-                <span style={{ fontWeight: 600 }}>{m.navn}</span>
+                <span style={{ fontWeight: 500 }}>{m.navn}</span>
               </label>
             ))}
           </div>
@@ -318,7 +312,7 @@ function NyBesked({ onClose, onSendt }) {
         </div>
 
         {fejl && (
-          <div style={{ ...card, padding: '10px 14px', marginTop: 12, background: '#FEF2F2', border: '1px solid #FCA5A5', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
+          <div style={{ ...card, padding: '10px 14px', marginTop: 12, background: '#FBF1EF', border: '1px solid #E0B6AF', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
@@ -485,7 +479,7 @@ function BeskederUI({ erAdmin }) {
       {valgtId && (
         <>
           <div style={{ borderBottom: `1px solid ${c.line}`, paddingBottom: 10, marginBottom: 12 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, overflowWrap: 'anywhere' }}>
               {traadData?.traad?.emne || valgtTraad?.emne || 'Samtale'}
             </div>
             {valgtTraad && Array.isArray(valgtTraad.deltagere) && valgtTraad.deltagere.length > 0 && (
@@ -545,7 +539,7 @@ function BeskederUI({ erAdmin }) {
       </p>
 
       {kvittering && (
-        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', color: c.green, fontSize: 14 }}>
+        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: '#F1F6F1', border: '1px solid #BFD3C1', color: c.green, fontSize: 14 }}>
           {kvittering}
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, input, font } from '../ui.js'
+import { Kort, Pilleknap } from '../komponenter/index.jsx'
 
 // Vises ved recovery/invite-landing. detectSessionInUrl (default) etablerer
 // sessionen; her promptes ny kode og updateUser() kaldes. Docs-mønster.
@@ -35,11 +36,11 @@ export default function SetPassword({ type }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, fontFamily: font }}>
       <div style={{ width: 380, maxWidth: 'calc(100vw - 32px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: c.ink }}>Enzo</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Enzo</div>
           <div style={{ fontSize: 13, color: c.sub }}>Casa Food</div>
         </div>
-        <div style={card}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
+        <Kort>
+          <div style={{ fontWeight: 500, marginBottom: 4 }}>{title}</div>
           <div style={{ fontSize: 12, color: c.green, marginBottom: 14 }}>Link modtaget ✓</div>
 
           {!ready && !waited && <div style={{ color: c.sub, fontSize: 14 }}>Klargør …</div>}
@@ -62,14 +63,14 @@ export default function SetPassword({ type }) {
                 autoComplete="new-password"
                 onKeyDown={(e) => e.key === 'Enter' && save()}
               />
-              <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={save} disabled={busy}>
+              <Pilleknap fuldBredde onClick={save} disabled={busy}>
                 Gem adgangskode
-              </button>
+              </Pilleknap>
             </>
           )}
 
           {status && <div style={{ marginTop: 12, fontSize: 13, color: status.includes('Fejl') ? c.red : c.sub }}>{status}</div>}
-        </div>
+        </Kort>
       </div>
     </div>
   )

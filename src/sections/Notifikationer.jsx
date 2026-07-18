@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, font } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 const fmtTid = (iso) => {
   if (!iso) return ''
@@ -10,26 +11,21 @@ const fmtTid = (iso) => {
 
 // Kanaler er visuelt distinkte — Telegram (blaa) vs Email (violet).
 const KANAL = {
-  telegram: { bg: '#E8F0FE', col: '#1E3A8A', prik: '#0066FF', txt: 'Telegram' },
+  telegram: { bg: '#EAEEE5', col: '#4B5A40', prik: '#0066FF', txt: 'Telegram' },
   email: { bg: '#F3E8FF', col: '#6B21A8', prik: '#9333EA', txt: 'Email' } }
 
 function KanalBadge({ kanal }) {
-  const k = KANAL[kanal] || { bg: '#F1F5F9', col: c.slate2, prik: c.slate, txt: kanal || 'ukendt' }
+  const k = KANAL[kanal] || { bg: '#F2F1ED', col: c.slate2, prik: c.slate, txt: kanal || 'ukendt' }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: k.bg, color: k.col, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: k.bg, color: k.col, fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 20 }}>
       <span style={{ width: 7, height: 7, borderRadius: 4, background: k.prik }} />
       {k.txt}
     </span>
   )
 }
 
-function StatusTekst({ status }) {
-  const map = {
-    sendt: { col: '#166534', txt: 'sendt' },
-    fejlet: { col: c.red, txt: 'fejlet' },
-    afventer: { col: '#92400E', txt: 'afventer' } }
-  const s = map[status] || { col: c.slate2, txt: status || '—' }
-  return <span style={{ fontSize: 12, fontWeight: 600, color: s.col }}>{s.txt}</span>
+function StatusTekst({ status, tekst }) {
+  return <StatusChip status={status} tekst={tekst} />
 }
 
 function FilterPill({ aktiv, onClick, tekst, antal }) {
@@ -40,11 +36,11 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
         border: `1.5px solid ${aktiv ? c.ink : c.line}`,
         background: aktiv ? c.ink : c.card,
         color: aktiv ? '#fff' : c.slate2,
-        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
+        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: font,
         display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {tekst}
-      <span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
     </button>
   )
 }
@@ -106,7 +102,7 @@ export default function Notifikationer() {
                 <div style={{ fontSize: 14.5, lineHeight: 1.5, color: c.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.besked}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                   <KanalBadge kanal={n.kanal} />
-                  <StatusTekst status={n.status} />
+                  <StatusTekst status={n.status} tekst={n.status_tekst} />
                   {(n.kunde || n.enhed) && (
                     <span style={{ fontSize: 12.5, color: c.sub }}>
                       {n.kunde || ''}{n.kunde && n.enhed ? ' · ' : ''}{n.enhed || ''}

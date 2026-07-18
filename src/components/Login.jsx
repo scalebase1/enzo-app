@@ -1,6 +1,18 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, input, font } from '../ui.js'
+import { Kort, Pilleknap } from '../komponenter/index.jsx'
+
+// Supabase svarer paa engelsk — oversaet de kendte fejl. Ukendte vises ordret,
+// saa vi aldrig skjuler noget vi ikke har forudset.
+function daskFejl(besked) {
+  const b = String(besked || '')
+  if (/invalid login credentials/i.test(b)) return 'Forkert email eller adgangskode.'
+  if (/email not confirmed/i.test(b)) return 'Din email er ikke bekræftet endnu.'
+  if (/too many requests|rate limit/i.test(b)) return 'For mange forsøg — vent lidt og prøv igen.'
+  if (/network|fetch/i.test(b)) return 'Ingen forbindelse — tjek dit internet.'
+  return 'Login-fejl: ' + b
+}
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -14,7 +26,7 @@ export default function Login() {
     setStatus('Logger ind …')
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     setBusy(false)
-    if (error) setStatus('Login-fejl: ' + error.message)
+    if (error) setStatus(daskFejl(error.message))
     // ved succes overtager onAuthStateChange i App
   }
 
@@ -35,11 +47,11 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, fontFamily: font }}>
       <div style={{ width: 380, maxWidth: 'calc(100vw - 32px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: c.ink }}>Enzo</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Enzo</div>
           <div style={{ fontSize: 13, color: c.sub }}>Casa Food · driftssystem</div>
         </div>
-        <div style={card}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>{forgot ? 'Nulstil adgangskode' : 'Log ind'}</div>
+        <Kort>
+          <div style={{ fontWeight: 500, marginBottom: 12 }}>{forgot ? 'Nulstil adgangskode' : 'Log ind'}</div>
           <input
             style={input}
             value={email}
@@ -61,25 +73,25 @@ export default function Login() {
             />
           )}
           {!forgot ? (
-            <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={login} disabled={busy}>
+            <Pilleknap fuldBredde onClick={login} disabled={busy}>
               Log ind
-            </button>
+            </Pilleknap>
           ) : (
-            <button style={{ ...btn, width: '100%', opacity: busy ? 0.6 : 1 }} onClick={sendReset} disabled={busy}>
+            <Pilleknap fuldBredde onClick={sendReset} disabled={busy}>
               Send reset-link
-            </button>
+            </Pilleknap>
           )}
           <div style={{ textAlign: 'center', marginTop: 12 }}>
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); setForgot(!forgot); setStatus('') }}
-              style={{ color: c.blue, fontSize: 13, textDecoration: 'none' }}
+              style={{ color: c.accent, fontSize: 13, textDecoration: 'none' }}
             >
               {forgot ? '← Tilbage til login' : 'Glemt adgangskode?'}
             </a>
           </div>
           {status && <div style={{ marginTop: 12, fontSize: 13, color: status.includes('fejl') || status.includes('Fejl') ? c.red : c.sub }}>{status}</div>}
-        </div>
+        </Kort>
       </div>
     </div>
   )

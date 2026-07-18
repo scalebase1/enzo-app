@@ -78,7 +78,7 @@ export default function Virksomhed() {
       {!loading && !err && data && (
         <>
           {kvittering && (
-            <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+            <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
               <span>{kvittering}</span>
               <button onClick={() => setKvittering('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
             </div>
@@ -86,12 +86,12 @@ export default function Virksomhed() {
 
           {/* Rolig note — ikke en fejl, bare noget der endnu ikke er sat. */}
           {klar === false && (
-            <div style={{ ...card, marginTop: 16, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 14 }}>
+            <div style={{ ...card, marginTop: 16, background: '#FBF6EA', border: '1px solid #E6D6AE', color: '#8A5F14', fontSize: 14 }}>
               Udfyld disse felter for at kunne sende fakturaer.
             </div>
           )}
           {klar === true && (
-            <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontSize: 14, fontWeight: 600 }}>
+            <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontSize: 14, fontWeight: 500 }}>
               ✓ Klar til fakturering.
             </div>
           )}
@@ -102,13 +102,13 @@ export default function Virksomhed() {
               return (
                 <div key={f.noegle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: c.sub }}>{f.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: c.sub }}>{f.label}</span>
                     {f.paakraevet && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: savner ? '#B45309' : c.slate }}>{savner ? 'påkrævet — mangler' : 'påkrævet'}</span>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: savner ? '#B45309' : c.slate }}>{savner ? 'påkrævet — mangler' : 'påkrævet'}</span>
                     )}
                   </div>
                   <input
-                    style={{ ...input, marginBottom: 0, ...(savner ? { border: '1.5px solid #F59E0B', background: '#FFFBEB' } : {}) }}
+                    style={{ ...input, marginBottom: 0, ...(savner ? { border: '1.5px solid #F59E0B', background: '#FBF6EA' } : {}) }}
                     value={vaerdier[f.noegle] ?? ''}
                     onChange={(e) => setVaerdier((v) => ({ ...v, [f.noegle]: e.target.value }))}
                     disabled={busy}
@@ -119,7 +119,7 @@ export default function Virksomhed() {
             })}
 
             {felter.length === 0 && <div style={{ color: c.sub, fontSize: 14 }}>Ingen felter at vise.</div>}
-            {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600 }}>{fejl}</div>}
+            {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{fejl}</div>}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button style={{ ...btn, opacity: (busy || !dirty) ? 0.55 : 1 }} disabled={busy || !dirty} onClick={gem}>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
+import { tone } from '../ui.js'
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 const fmtDato = (iso) => {
@@ -15,16 +17,14 @@ const fmtTid = (iso) => {
 }
 
 function TypeBadge({ type }) {
-  return <span style={{ background: '#EEF2F7', color: c.slate2, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{cap(type) || '—'}</span>
+  return <StatusChip tekst={cap(type) || '—'} farve={tone.neutral} />
 }
 
+// Bevarer den eksisterende ordlyd ("Afventer dig" fortaeller hvem bolden ligger hos)
+// frem for en generisk label.
 function StatusBadge({ status }) {
   const sendt = status === 'sendt'
-  return (
-    <span style={{ background: sendt ? '#DCFCE7' : '#FEF3C7', color: sendt ? '#166534' : '#92400E', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      {sendt ? 'Sendt' : 'Afventer dig'}
-    </span>
-  )
+  return <StatusChip status={status} tekst={sendt ? 'Sendt' : 'Afventer dig'} farve={sendt ? tone.ok : tone.advarsel} />
 }
 
 function FilterPill({ aktiv, onClick, tekst, antal }) {
@@ -33,10 +33,10 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
       onClick={onClick}
       style={{
         border: `1.5px solid ${aktiv ? c.ink : c.line}`, background: aktiv ? c.ink : c.card, color: aktiv ? '#fff' : c.slate2,
-        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
+        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: font,
         display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
-      {tekst}<span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
+      {tekst}<span style={{ fontSize: 12, fontWeight: 500, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
     </button>
   )
 }
@@ -55,21 +55,21 @@ function Overlay({ lukVedBackdrop, onClose, width = 620, children }) {
   )
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 500, color: c.sub, marginBottom: 4 }
 
 // Læse-visning (sendt) — backdrop lukker gerne, ingen redigering.
 function SendtVisning({ kladde, onClose }) {
   return (
     <Overlay lukVedBackdrop onClose={onClose}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>{kladde.emne || '(uden emne)'}</div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, overflowWrap: 'anywhere' }}>{kladde.emne || '(uden emne)'}</div>
         <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: 'pointer', padding: 0 }}>×</button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <TypeBadge type={kladde.type} /><StatusBadge status="sendt" />
       </div>
       <div style={{ fontSize: 14 }}>
-        <div><span style={{ color: c.sub }}>Til:</span> <span style={{ fontWeight: 600 }}>{kladde.modtager || '—'}</span>{kladde.kunde ? <span style={{ color: c.sub }}> · {kladde.kunde}</span> : null}</div>
+        <div><span style={{ color: c.sub }}>Til:</span> <span style={{ fontWeight: 500 }}>{kladde.modtager || '—'}</span>{kladde.kunde ? <span style={{ color: c.sub }}> · {kladde.kunde}</span> : null}</div>
       </div>
       <div style={{ fontSize: 14.5, lineHeight: 1.55, color: c.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>{kladde.besked}</div>
       <div style={{ fontSize: 12.5, color: c.slate2, borderTop: `1px solid ${c.line}`, paddingTop: 12 }}>
@@ -150,7 +150,7 @@ function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
   return (
     <Overlay lukVedBackdrop={false} onClose={onClose}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: c.ink }}>Gennemgå & send</div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: c.ink }}>Gennemgå & send</div>
         <button onClick={onClose} disabled={laast} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: laast ? 'default' : 'pointer', opacity: laast ? 0.5 : 1, padding: 0 }}>×</button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -171,19 +171,19 @@ function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
         <textarea rows={10} style={{ ...inputU, resize: 'vertical', fontFamily: font }} value={besked} onChange={(e) => setBesked(e.target.value)} placeholder="Beskeden til kunden …" disabled={laast} />
       </div>
 
-      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600 }}>{fejl}</div>}
+      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{fejl}</div>}
 
       {bekraeft === 'send' ? (
         <div style={{ ...card, background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: c.ink }}>Send til {modtager}? Dette er en rigtig mail til kunden.</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink }}>Send til {modtager}? Dette er en rigtig mail til kunden.</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button style={{ ...btnGhost, opacity: laast ? 0.6 : 1 }} onClick={() => setBekraeft(null)} disabled={laast}>Fortryd</button>
             <button style={{ ...btn, opacity: laast ? 0.6 : 1 }} onClick={send} disabled={laast}>{busy === 'send' ? 'Sender …' : 'Ja, send til kunde'}</button>
           </div>
         </div>
       ) : bekraeft === 'slet' ? (
-        <div style={{ ...card, background: '#FEE2E2', border: '1px solid #FCA5A5', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#991B1B' }}>Slet denne kladde permanent?</div>
+        <div style={{ ...card, background: '#F6E7E4', border: '1px solid #E0B6AF', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#8C3E36' }}>Slet denne kladde permanent?</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button style={{ ...btnGhost, opacity: laast ? 0.6 : 1 }} onClick={() => setBekraeft(null)} disabled={laast}>Fortryd</button>
             <button style={{ ...btn, background: c.red, opacity: laast ? 0.6 : 1 }} onClick={slet} disabled={laast}>{busy === 'slet' ? 'Sletter …' : 'Slet'}</button>
@@ -210,7 +210,7 @@ function KladdeKort({ kladde, onClick }) {
         <StatusBadge status={kladde.status} />
         <span style={{ fontSize: 12, color: c.slate2 }}>{fmtDato(kladde.oprettet)}</span>
       </div>
-      <div style={{ fontSize: 15.5, fontWeight: 700, color: c.ink, marginTop: 10, overflowWrap: 'anywhere' }}>{kladde.emne || '(uden emne)'}</div>
+      <div style={{ fontSize: 15.5, fontWeight: 500, color: c.ink, marginTop: 10, overflowWrap: 'anywhere' }}>{kladde.emne || '(uden emne)'}</div>
       <div style={{ fontSize: 13, color: c.sub, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         Til: {kladde.modtager || '—'}{kladde.kunde ? ` · ${kladde.kunde}` : ''}
       </div>
@@ -266,7 +266,7 @@ export default function Kladder() {
       <p style={{ color: c.sub, margin: '6px 0 0' }}>Enzo skriver udkast til kundemails. Du læser dem igennem, retter hvis nødvendigt, og sender — direkte herfra.</p>
 
       {kvittering && (
-        <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <span>{kvittering}</span>
           <button onClick={() => setKvittering(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
         </div>
