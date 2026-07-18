@@ -26,9 +26,8 @@ function TypeBadge({ type }) {
   return <StatusChip tekst={virk ? 'Virksomhed' : 'Privat'} farve={virk ? tone.aktiv : tone.neutral} />
 }
 
-function StatusPill({ status }) {
-  // crm_data har ikke status_tekst — vis enum'en laeseligt via StatusChip.
-  return <StatusChip status={status} />
+function StatusPill({ status, tekst }) {
+  return <StatusChip status={status} tekst={tekst} />
 }
 
 function Noegletal({ label, value }) {
@@ -67,7 +66,7 @@ function BookingListe({ titel, rows, tom }) {
               </div>
               <div style={{ fontSize: 13, color: c.slate2, minWidth: 74, textAlign: 'right' }}>{b.covers != null ? `${b.covers} kuv.` : '—'}</div>
               <div style={{ fontSize: 14, fontWeight: 500, minWidth: 90, textAlign: 'right' }}>{kr(b.beloeb)}</div>
-              <StatusPill status={b.status} />
+              <StatusPill status={b.status} tekst={b.status_tekst} />
             </div>
           ))}
         </div>

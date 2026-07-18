@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, font } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 const fmtTid = (iso) => {
   if (!iso) return ''
@@ -23,13 +24,8 @@ function KanalBadge({ kanal }) {
   )
 }
 
-function StatusTekst({ status }) {
-  const map = {
-    sendt: { col: '#3B6349', txt: 'sendt' },
-    fejlet: { col: c.red, txt: 'fejlet' },
-    afventer: { col: '#8A5F14', txt: 'afventer' } }
-  const s = map[status] || { col: c.slate2, txt: status || '—' }
-  return <span style={{ fontSize: 12, fontWeight: 500, color: s.col }}>{s.txt}</span>
+function StatusTekst({ status, tekst }) {
+  return <StatusChip status={status} tekst={tekst} />
 }
 
 function FilterPill({ aktiv, onClick, tekst, antal }) {
@@ -106,7 +102,7 @@ export default function Notifikationer() {
                 <div style={{ fontSize: 14.5, lineHeight: 1.5, color: c.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.besked}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                   <KanalBadge kanal={n.kanal} />
-                  <StatusTekst status={n.status} />
+                  <StatusTekst status={n.status} tekst={n.status_tekst} />
                   {(n.kunde || n.enhed) && (
                     <span style={{ fontSize: 12.5, color: c.sub }}>
                       {n.kunde || ''}{n.kunde && n.enhed ? ' · ' : ''}{n.enhed || ''}

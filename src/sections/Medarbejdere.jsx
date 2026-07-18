@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, sp } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
+import { useSmalSkaerm } from '../komponenter/useSmalSkaerm.js'
 
 const ONBOARD = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/medarbejder-onboard'
 

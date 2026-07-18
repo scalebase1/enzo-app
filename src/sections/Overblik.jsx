@@ -43,6 +43,38 @@ function AttnBadge({ n }) {
   return <span style={{ background: '#F6EEDD', color: '#8A5F14', fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>{n}</span>
 }
 
+// audit_log gemmer tekniske handlingsnavne (kladde_slet, admin_handling:vagt_tildel …).
+// Backend har endnu ingen handling_tekst() — indtil da oversaetter vi her.
+// Praefikset (admin_handling:/medarbejder_handling:) er stoej og fjernes foerst.
+const HANDLING_TEKST = {
+  booking_opret: 'Booking oprettet', booking_opdater: 'Booking opdateret',
+  opdater_booking: 'Booking opdateret', booking_status: 'Booking skiftede status',
+  booking_slet: 'Booking slettet', booking_generer_bekraeftelse: 'Bekræftelse dannet',
+  kunde_opret: 'Kunde oprettet', kunde_opdater: 'Kunde opdateret',
+  opdater_kunde: 'Kunde opdateret', kunde_slet: 'Kunde slettet',
+  faktura_opret: 'Fakturakladde oprettet', faktura_udsted: 'Faktura udstedt',
+  faktura_send: 'Faktura sendt', faktura_marker_betalt: 'Faktura markeret betalt',
+  faktura_slet: 'Faktura slettet',
+  gem_kladde: 'Kladde gemt', kladde_opdater: 'Kladde opdateret',
+  kladde_slet: 'Kladde slettet', kladde_generer: 'Kladde dannet',
+  vagt_opret: 'Vagt oprettet', vagt_tildel: 'Vagt tildelt', vagt_aaben: 'Vagt frigivet',
+  vagt_slet: 'Vagt fjernet', vagt_tag: 'Vagt taget', vagt_accepter: 'Vagt bekræftet',
+  vagt_afmeld: 'Vagt afmeldt', vagt_byt: 'Vagt byttet', flyt_vagt: 'Vagt flyttet',
+  meld_ledig: 'Meldt ledig', fjern_ledig: 'Ledighed fjernet',
+  timer_registrer: 'Timer registreret', registrer_timer: 'Timer registreret',
+  tilfoej_medarbejder: 'Medarbejder tilføjet', opdater_medarbejder: 'Medarbejder opdateret',
+  godkend_medarbejder: 'Medarbejder godkendt', kobl_medarbejder: 'Medarbejder koblet til login',
+  medarbejder_generer_link: 'Invitationslink dannet', opdater_loen: 'Timeløn opdateret',
+  besked_send: 'Besked sendt', virksomhed_gem: 'Virksomhedsoplysninger gemt',
+  enzo_svar: 'Enzo svarede', dashboard_opgave: 'Opgave fra dashboardet',
+}
+
+function handlingTekst(h) {
+  if (!h) return '—'
+  const ren = String(h).split(':').pop()
+  return HANDLING_TEKST[ren] || ren.replace(/_/g, ' ').replace(/^./, (t) => t.toUpperCase())
+}
+
 function Kort({ titel, badge, children, style }) {
   return (
     <div style={{ ...card, ...style }}>
@@ -242,7 +274,7 @@ export default function Overblik() {
               {aktivitet.length === 0 ? <Tom>Ingen nylig aktivitet.</Tom> : aktivitet.map((a, i) => (
                 <Raekke key={i} top={i > 0}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14 }}>{a.handling || '—'}</div>
+                    <div style={{ fontSize: 14 }}>{handlingTekst(a.handling)}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
                       {fmtTid(a.tid)}{a.hvem && !erUUID(a.hvem) ? ` · ${a.hvem}` : ''}
                     </div>

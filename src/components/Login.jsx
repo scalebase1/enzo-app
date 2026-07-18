@@ -3,6 +3,17 @@ import { supabase } from '../supabaseClient.js'
 import { c, card, btn, input, font } from '../ui.js'
 import { Kort, Pilleknap } from '../komponenter/index.jsx'
 
+// Supabase svarer paa engelsk — oversaet de kendte fejl. Ukendte vises ordret,
+// saa vi aldrig skjuler noget vi ikke har forudset.
+function daskFejl(besked) {
+  const b = String(besked || '')
+  if (/invalid login credentials/i.test(b)) return 'Forkert email eller adgangskode.'
+  if (/email not confirmed/i.test(b)) return 'Din email er ikke bekræftet endnu.'
+  if (/too many requests|rate limit/i.test(b)) return 'For mange forsøg — vent lidt og prøv igen.'
+  if (/network|fetch/i.test(b)) return 'Ingen forbindelse — tjek dit internet.'
+  return 'Login-fejl: ' + b
+}
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,7 +26,7 @@ export default function Login() {
     setStatus('Logger ind …')
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     setBusy(false)
-    if (error) setStatus('Login-fejl: ' + error.message)
+    if (error) setStatus(daskFejl(error.message))
     // ved succes overtager onAuthStateChange i App
   }
 

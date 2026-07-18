@@ -57,7 +57,7 @@ function Koncepter({ liste }) {
 function Noegletal({ label, value, fremhaev }) {
   return (
     <div style={{ ...card, padding: '14px 16px' }}>
-      <div style={{ fontSize: 11, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
+      <div style={{ fontSize: 13, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: fremhaev ? c.amber : c.ink }}>{value}</div>
     </div>
   )
@@ -139,7 +139,7 @@ function SpoergEnzo() {
 
   return (
     <div style={card}>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Spørg Enzo</div>
+      <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Spørg Enzo</div>
       <textarea
         style={{ ...input, marginBottom: 0, minHeight: 76, resize: 'vertical' }}
         value={tekst}
@@ -179,7 +179,7 @@ function FraEnzo() {
 
   return (
     <div style={{ ...card, marginTop: sp(4) }}>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Fra Enzo</div>
+      <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Fra Enzo</div>
       {fejl && <div style={{ fontSize: 13, color: c.red, whiteSpace: 'pre-wrap' }}>{fejl}</div>}
       {!fejl && poster === null && <div style={{ color: c.sub, fontSize: 14 }}>Henter …</div>}
       {!fejl && poster && poster.length === 0 && <Tom tekst="Intet nyt fra Enzo." />}
@@ -259,7 +259,7 @@ function AdminForside({ data, smal, onDataAendret }) {
       </div>
 
       <div style={{ marginTop: sp(6) }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Næste arrangementer</div>
+        <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Næste arrangementer</div>
         {aabnFejl && <div style={{ fontSize: 13, color: c.red, marginBottom: 8, whiteSpace: 'pre-wrap' }}>{aabnFejl}</div>}
         {arrangementer.length === 0 ? (
           <Tom tekst="Ingen kommende arrangementer." />
@@ -341,7 +341,7 @@ function MedarbejderForside({ data, smal }) {
       </div>
 
       <div style={{ marginTop: sp(6) }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Mine næste vagter</div>
+        <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Mine næste vagter</div>
         {vagter.length === 0 ? (
           <Tom tekst="Du har ingen kommende vagter." />
         ) : (

@@ -22,7 +22,8 @@ const LABEL = {
 
 const laeseligt = (s) => {
   const n = String(s || '')
-  return LABEL[n] || n.replace(/_/g, ' ')
+  const t = LABEL[n] || n.replace(/_/g, ' ')
+  return t.replace(/^./, (x) => x.toUpperCase())
 }
 
 export default function StatusChip({ status, tekst, farve, style }) {
