@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, input, font, sp } from '../ui.js'
-
-// Samme edge-funktion som Enzo-sektionen bruger. Defineret her (og ikke
-// importeret) fordi Enzo.jsx ikke eksporterer den — vi roerer ikke den sektion.
-const ENZO_CHAT = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-chat'
+import { PROXY as ENZO_CHAT } from './Enzo.jsx'
+import { BookingDetalje, byggeEnhedFarver } from './Kalender.jsx'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
 const timer = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 1 })} t`
@@ -230,10 +228,38 @@ function FraEnzo() {
   )
 }
 
-function AdminForside({ data, smal }) {
-  const nav = useNavigate()
+function AdminForside({ data, smal, onDataAendret }) {
   const arrangementer = Array.isArray(data.naeste_arrangementer) ? data.naeste_arrangementer : []
   const skal = Number(data.skal_handles || 0)
+
+  // Bookingdetaljen er den samme komponent som i Kalender, og den kraever et
+  // kalender_bookinger-formet objekt. forside_data giver kun et uddrag, saa vi
+  // henter den rigtige raekke paa booking_id naar der klikkes.
+  const [valgt, setValgt] = useState(null)      // kalender-formet booking
+  const [farver, setFarver] = useState(() => new Map())
+  const [aabnerId, setAabnerId] = useState(null)
+  const [aabnFejl, setAabnFejl] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    supabase.rpc('enheder_liste').then(({ data: d, error }) => {
+      if (!alive || error || !Array.isArray(d)) return
+      setFarver(byggeEnhedFarver(d))
+    })
+    return () => { alive = false }
+  }, [])
+
+  async function aabn(bookingId) {
+    if (aabnerId) return
+    setAabnerId(bookingId); setAabnFejl('')
+    const { data: d, error } = await supabase.rpc('kalender_data')
+    setAabnerId(null)
+    if (error) { setAabnFejl(error.message); return }
+    if (!d || d.ok === false) { setAabnFejl(d?.fejl || 'Kunne ikke hente bookingen.'); return }
+    const b = (d.bookinger || []).find((x) => x.booking_id === bookingId)
+    if (!b) { setAabnFejl('Bookingen blev ikke fundet i kalenderen.'); return }
+    setValgt(b)
+  }
 
   const midte = (
     <div>
@@ -250,6 +276,7 @@ function AdminForside({ data, smal }) {
 
       <div style={{ marginTop: sp(6) }}>
         <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Næste arrangementer</div>
+        {aabnFejl && <div style={{ fontSize: 13, color: c.red, marginBottom: 8, whiteSpace: 'pre-wrap' }}>{aabnFejl}</div>}
         {arrangementer.length === 0 ? (
           <Tom tekst="Ingen kommende arrangementer." />
         ) : (
@@ -257,7 +284,8 @@ function AdminForside({ data, smal }) {
             {arrangementer.map((a, i) => (
               <button
                 key={a.booking_id}
-                onClick={() => nav('/kalender')}
+                onClick={() => aabn(a.booking_id)}
+                disabled={!!aabnerId}
                 style={{
                   width: '100%', textAlign: 'left', border: 'none', background: 'transparent', fontFamily: font,
                   cursor: 'pointer', display: 'block', padding: '14px 16px', minHeight: 44,
@@ -289,15 +317,28 @@ function AdminForside({ data, smal }) {
     </div>
   )
 
+  // Den eksisterende bookingdetalje fra Kalender — samme komponent, samme logik.
+  const modal = valgt && (
+    <BookingDetalje
+      booking={valgt}
+      enhedFarve={farver.get(valgt.enhed)}
+      onClose={() => setValgt(null)}
+      onVagtChange={onDataAendret}
+    />
+  )
+
   // Mobil: Enzo-panelet nederst. Desktop: hoejrespalte paa ca. 280px.
   if (smal) {
-    return <div>{midte}<div style={{ marginTop: sp(6) }}>{hoejre}</div></div>
+    return <div>{midte}<div style={{ marginTop: sp(6) }}>{hoejre}</div>{modal}</div>
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: sp(6), alignItems: 'start' }}>
-      {midte}
-      {hoejre}
-    </div>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: sp(6), alignItems: 'start' }}>
+        {midte}
+        {hoejre}
+      </div>
+      {modal}
+    </>
   )
 }
 
@@ -370,6 +411,6 @@ export default function Forside() {
   if (!data) return null
 
   return data.rolle === 'admin'
-    ? <AdminForside data={data} smal={smal} />
+    ? <AdminForside data={data} smal={smal} onDataAendret={load} />
     : <MedarbejderForside data={data} smal={smal} />
 }

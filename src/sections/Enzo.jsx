@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, monoFont, sp } from '../ui.js'
 
-const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-chat'
+export const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-chat'
 
 function StatusBadge({ status }) {
   let bg = '#E5E7EB', col = '#4B5563', txt = status || '—'
@@ -39,6 +39,8 @@ function EnzoChat({ onSvar }) {
   // hver sideindlaesning et nyt id, og serverens gemte historik blev aldrig laest
   // igen. "Ny samtale" laver stadig et FRISKT id (det er meningen at den nulstiller).
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID())
+  const [uid, setUid] = useState(null)
+  const [historikFejl, setHistorikFejl] = useState('')
   const uidRef = useRef(null)
   const boxRef = useRef(null)
 
@@ -47,10 +49,11 @@ function EnzoChat({ onSvar }) {
     let alive = true
     supabase.auth.getSession().then(({ data }) => {
       if (!alive) return
-      const uid = data.session?.user?.id
-      if (!uid) return
-      uidRef.current = uid
-      const key = `enzo_session_${uid}`
+      const u = data.session?.user?.id
+      if (!u) return
+      uidRef.current = u
+      setUid(u)
+      const key = `enzo_session_${u}`
       let gemt = null
       try { gemt = localStorage.getItem(key) } catch { /* ignore */ }
       if (gemt) setSessionId(gemt)
@@ -58,6 +61,23 @@ function EnzoChat({ onSvar }) {
     })
     return () => { alive = false }
   }, [])
+
+  // Indlaes samtalens historik, saa chatten ikke starter tom ved hver
+  // sideindlaesning — og saa et spoergsmaal stillet fra forsiden er synligt.
+  // Noeglen i databasen er "<uid>:<sessionId>": edge-funktionen praefikser selv
+  // med bruger-id'et, og enzo_historik afviser alt der ikke starter med ens eget.
+  useEffect(() => {
+    if (!uid) return
+    let alive = true
+    setHistorikFejl('')
+    supabase.rpc('enzo_historik', { p_session_id: `${uid}:${sessionId}` }).then(({ data, error }) => {
+      if (!alive) return
+      if (error) { setHistorikFejl(error.message); return }
+      if (!data || data.ok === false) { setHistorikFejl(data?.fejl || 'Kunne ikke hente historikken.'); return }
+      setBeskeder((data.beskeder || []).map((b) => ({ rolle: b.afsender === 'bruger' ? 'bruger' : 'enzo', tekst: b.tekst })))
+    })
+    return () => { alive = false }
+  }, [uid, sessionId])
 
   useEffect(() => {
     const el = boxRef.current
@@ -69,6 +89,7 @@ function EnzoChat({ onSvar }) {
     setBeskeder([])
     setTekst('')
     setChatFejl('')
+    setHistorikFejl('')
     const nyt = crypto.randomUUID()
     if (uidRef.current) {
       try { localStorage.setItem(`enzo_session_${uidRef.current}`, nyt) } catch { /* ignore */ }
@@ -164,6 +185,9 @@ function EnzoChat({ onSvar }) {
             </div>
           )}
         </div>
+        {historikFejl && (
+          <div style={{ padding: '8px 16px', color: c.red, fontSize: 13, borderTop: `1px solid ${c.line}`, whiteSpace: 'pre-wrap' }}>{historikFejl}</div>
+        )}
         {chatFejl && (
           <div style={{ padding: '8px 16px', color: c.red, fontSize: 13, borderTop: `1px solid ${c.line}` }}>{chatFejl}</div>
         )}

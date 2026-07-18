@@ -45,9 +45,9 @@ const VOGN_FARVER = [
 ]
 // Amber "kraever handling" — bevidst adskilt fra TONE.slate (aflyst) saa en
 // aktiv booking uden enhed ikke ligner en aflyst i grid og signaturforklaring.
-const UDEN_ENHED_FARVE = { background: '#FEF9C3', color: '#854D0E', border: '#CA8A04' }
+export const UDEN_ENHED_FARVE = { background: '#FEF9C3', color: '#854D0E', border: '#CA8A04' }
 
-function byggeEnhedFarver(enheder) {
+export function byggeEnhedFarver(enheder) {
   const m = new Map()
   let ci = 0, vi = 0
   for (const e of enheder) {
@@ -81,7 +81,7 @@ function EnhedInfoLinje({ enhed, info }) {
 }
 
 // Renser titel for teknisk stoej og "❌ AFLYST —"-praefiks til visning.
-const renTitel = (t) => (t || '').replace(/^❌\s*AFLYST\s*—\s*/i, '').trim()
+export const renTitel = (t) => (t || '').replace(/^❌\s*AFLYST\s*—\s*/i, '').trim()
 
 // kalender_bookinger/RPC'erne leverer 'koncepter' som array af pæne navne
 // (fx ["Casanova","The Blue Pearl"]) — det fulde saet inkl. ekstra koncepter.
@@ -276,7 +276,7 @@ function ShiftBadge({ status }) {
   return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
 }
 
-function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger }) {
+export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger }) {
   const start = new Date(booking.start)
   const slut = new Date(booking.slut)
   const linjer = (booking.beskrivelse || '').split('\n').filter((l) => l.trim())
