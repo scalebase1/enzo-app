@@ -13,6 +13,14 @@ const timerFmt = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFract
 // afgoere om nogen er fjernet — kun status'en.
 const erFjernet = (m) => m.onboarding_status === 'inaktiv'
 
+// Backendens fejl skal vises ORDRET — men kun hvis den faktisk er en tekst.
+// Er den tom, et objekt eller noget uforstaaeligt, viser vi en menneskelig
+// besked i stedet. En bruger skal aldrig se "{}" eller "[object Object]".
+function menneskeligFejl(kandidat, reserve) {
+  if (typeof kandidat === 'string' && kandidat.trim()) return kandidat.trim()
+  return reserve
+}
+
 // Uden login endnu → kan inviteres.
 const kanInviteres = (status) => status === 'afventer_medarbejder' || status === 'afventer_godkendelse'
 
@@ -123,15 +131,15 @@ export default function Medarbejdere() {
     const { data, error } = await supabase.rpc('medarbejdere_liste')
     setLoading(false)
     if (error) { setErr(error.message); return }
-    if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente liste.'); return }
+    if (!data || data.ok === false) { setErr(menneskeligFejl(data?.fejl, 'Kunne ikke hente listen.')); return }
     setListe(data.medarbejdere || [])
   }, [])
 
   useEffect(() => { load({ foerste: true }) }, [load])
 
   function tjek(data, error, fallback) {
-    if (error) return error.message
-    if (!data || data.ok === false) return data?.fejl || fallback
+    if (error) return menneskeligFejl(error.message, fallback)
+    if (!data || data.ok === false) return menneskeligFejl(data?.fejl, fallback)
     return null
   }
 
@@ -217,8 +225,8 @@ export default function Medarbejdere() {
             setBusy(null)
             const f = tjek(data, error, 'Kunne ikke fjerne medarbejderen.')
             if (f) { setFejl(f); return }
-            setKvittering(data.besked || `${data.navn} er fjernet.`)
-            setAdvarsel(data.advarsel || '')
+            setKvittering(menneskeligFejl(data.besked, `${data.navn || 'Medarbejderen'} er fjernet.`))
+            setAdvarsel(typeof data.advarsel === 'string' ? data.advarsel : '')
             setFjern(null)
             load()
           }}
@@ -265,61 +273,33 @@ function NyMedarbejder({ onClose, onFaerdig }) {
   const [busy, setBusy] = useState(false)
   const [fejl, setFejl] = useState('')
 
+  // Ét trin: navn, telefon, email og timeloen gemmes alle af medarbejder_opret.
+  // Invitationen er nu et separat, bevidst valg bagefter ("Inviter" paa kortet)
+  // — den er ikke laengere det, der faar emailen paa plads.
   async function opret() {
-    const n = navn.trim()
-    if (!n) { setFejl('Skriv et navn.'); return }
+    if (busy) return
     setBusy(true); setFejl('')
 
-    // Selve oprettelsen: medarbejder_opret tager navn, timeloen og telefon.
-    const payload = { navn: n, timeloen: loen.trim() || '0' }
+    const payload = { navn: navn.trim(), timeloen: loen.trim() || '0' }
     if (telefon.trim()) payload.telefon = telefon.trim()
+    if (email.trim()) payload.email = email.trim()
 
     const { data, error } = await supabase.rpc('admin_handling', {
       p_aktion: 'medarbejder_opret',
       p_payload: payload,
     })
-    if (error) { setBusy(false); setFejl(error.message); return }
-    if (!data || data.ok === false) { setBusy(false); setFejl(data?.fejl || 'Kunne ikke oprette medarbejderen.'); return }
+    setBusy(false)
 
-    // Email er valgfri. Er den udfyldt, sender vi ogsaa invitationen med det
-    // samme via den eksisterende onboard-funktion (medarbejder_opret kan hverken
-    // gemme email eller invitere). Uden email oprettes personen blot, og du kan
-    // invitere senere med "Inviter"-knappen paa kortet.
-    const e = email.trim().toLowerCase()
-    if (!e) {
-      setBusy(false)
-      onFaerdig(`${n} er oprettet. Inviter når du har en email.`)
+    if (error) { setFejl(menneskeligFejl(error.message, 'Medarbejderen kunne ikke oprettes.')); return }
+    if (!data || data.ok === false) {
+      setFejl(menneskeligFejl(data?.fejl, 'Medarbejderen kunne ikke oprettes.'))
       return
     }
 
-    const { data: sess } = await supabase.auth.getSession()
-    const tok = sess.session?.access_token
-    if (!tok) { setBusy(false); setFejl(`${n} er oprettet, men invitationen kunne ikke sendes: session udløbet — genindlæs.`); return }
-
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 20000)
-    try {
-      const res = await fetch(ONBOARD, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: data.id, email: e, redirectTo: window.location.origin }),
-        signal: ctrl.signal,
-      })
-      clearTimeout(timer)
-      const raw = await res.text()
-      let d = null
-      try { d = JSON.parse(raw) } catch { /* ignore */ }
-      setBusy(false)
-      if (!res.ok || !d || d.ok === false) {
-        // Personen ER oprettet — sig det, saa William ikke opretter igen.
-        setFejl(`${n} er oprettet, men invitationen fejlede: ${d && d.fejl ? d.fejl : 'Fejlede (' + res.status + ').'} Brug “Inviter” på kortet.`)
-        return
-      }
-      onFaerdig(d.besked || `${n} er oprettet og inviteret.`)
-    } catch (er) {
-      clearTimeout(timer); setBusy(false)
-      setFejl(`${n} er oprettet, men invitationen fejlede: ${er && er.name === 'AbortError' ? 'timeout' : 'uventet fejl'}. Brug “Inviter” på kortet.`)
-    }
+    const n = data.navn || navn.trim()
+    onFaerdig(data.email
+      ? `${n} er oprettet med ${data.email}. Tryk “Inviter” på kortet for at sende login-linket.`
+      : `${n} er oprettet. Tilføj en email og tryk “Inviter”, når ${n} skal kunne logge ind.`)
   }
 
   return (
@@ -334,7 +314,7 @@ function NyMedarbejder({ onClose, onFaerdig }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="navn@eksempel.dk"
           type="email"
-          hjaelp="Udfyldes den, sendes invitationen med det samme. Ellers kan du invitere senere."
+          hjaelp="Gemmes med det samme. Invitationen sender du bagefter med “Inviter” på kortet."
         />
         <Felt label="Timeløn (kr.)" value={loen} onChange={(e) => setLoen(e.target.value)} placeholder="150" inputMode="decimal" />
         <Fejlboks tekst={fejl} />
@@ -371,8 +351,8 @@ function RedigerMedarbejder({ m, onClose, onFaerdig }) {
       p_payload: payload,
     })
     setBusy(false)
-    if (error) { setFejl(error.message); return }
-    if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke gemme ændringerne.'); return }
+    if (error) { setFejl(menneskeligFejl(error.message, 'Ændringerne kunne ikke gemmes.')); return }
+    if (!data || data.ok === false) { setFejl(menneskeligFejl(data?.fejl, 'Ændringerne kunne ikke gemmes.')); return }
     onFaerdig(`${n || m.navn} er opdateret.`)
   }
 
@@ -444,10 +424,10 @@ function InviterMedarbejder({ m, onClose, onFaerdig }) {
       try { d = JSON.parse(raw) } catch { /* ignore */ }
       setBusy(false)
       if (!res.ok || !d || d.ok === false) {
-        setFejl(d && d.fejl ? d.fejl : 'Fejlede (' + res.status + ').')
+        setFejl(menneskeligFejl(d && d.fejl, 'Invitationen kunne ikke sendes. Prøv igen om lidt.'))
         return
       }
-      onFaerdig(d.besked || 'Invitation sendt.')
+      onFaerdig(menneskeligFejl(d.besked, 'Invitation sendt.'))
     } catch (er) {
       clearTimeout(timer); setBusy(false)
       setFejl(er && er.name === 'AbortError' ? 'Timeout — prøv igen.' : 'Uventet fejl — prøv igen.')
