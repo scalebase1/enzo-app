@@ -41,7 +41,7 @@ const tilBeloeb = (s) => {
   return isNaN(n) ? null : n
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
 
 function Felt({ tekst, flex = 1, children }) {
   return (

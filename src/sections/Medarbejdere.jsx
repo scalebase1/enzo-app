@@ -12,8 +12,7 @@ const STATUS_STIL = {
   inviteret: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'inviteret' },
   aktiv: { bg: '#DCFCE7', col: '#166534', txt: 'aktiv' },
   inaktiv: { bg: '#FEE2E2', col: '#991B1B', txt: 'inaktiv' },
-  afvist: { bg: '#FEE2E2', col: '#991B1B', txt: 'afvist' },
-}
+  afvist: { bg: '#FEE2E2', col: '#991B1B', txt: 'afvist' } }
 
 function Badge({ status, aktiv }) {
   const key = status === 'aktiv' && !aktiv ? 'inaktiv' : status
@@ -25,6 +24,7 @@ function Badge({ status, aktiv }) {
 const kanInviteres = (status) => status === 'afventer_medarbejder' || status === 'afventer_godkendelse'
 
 export default function Medarbejdere() {
+  const smal = useSmalSkaerm()
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
@@ -74,8 +74,7 @@ export default function Medarbejdere() {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
         body: JSON.stringify({ staff_id: inviter.id, email: e }),
-        signal: ctrl.signal,
-      })
+        signal: ctrl.signal })
       clearTimeout(timer)
       const raw = await res.text()
       let d = null
@@ -111,8 +110,7 @@ export default function Medarbejdere() {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
         body: JSON.stringify({ navn: n, email: e, timeloen: isNaN(l) ? 0 : l, redirectTo: window.location.origin }),
-        signal: ctrl.signal,
-      })
+        signal: ctrl.signal })
       clearTimeout(timer)
       const raw = await res.text()
       let d = null
@@ -169,10 +167,28 @@ export default function Medarbejdere() {
         {loading && <div style={{ padding: 20, color: c.sub }}>Henter …</div>}
         {err && <div style={{ padding: 20, color: c.red }}>Fejl: {err}</div>}
         {liste && liste.length === 0 && <div style={{ padding: 20, color: c.sub }}>Ingen medarbejdere endnu.</div>}
-        {liste && liste.length > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        {/* Mobil: tabellen bliver til en kortliste. Samme data, samme handlinger,
+            men uden vandret scroll. */}
+        {liste && liste.length > 0 && smal && liste.map((m, i) => (
+          <div key={m.id} style={{ padding: '14px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 16, fontWeight: 500, color: c.ink }}>{m.navn}</div>
+              <Badge status={m.onboarding_status} aktiv={m.aktiv} />
+            </div>
+            <div style={{ fontSize: 14, color: c.sub, marginTop: 4, overflowWrap: 'anywhere' }}>{m.email || '—'}</div>
+            <div style={{ fontSize: 14, color: c.sub, marginTop: 2 }}>
+              {m.timeloen != null ? m.timeloen + ' kr./time' : 'Ingen timeløn'}
+            </div>
+            {kanInviteres(m.onboarding_status) && (
+              <button style={{ ...btn, marginTop: 10, width: '100%' }} onClick={() => aabnInviter(m)}>Inviter</button>
+            )}
+          </div>
+        ))}
+
+        {liste && liste.length > 0 && !smal && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
             <thead>
-              <tr style={{ textAlign: 'left', color: c.sub, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+              <tr style={{ textAlign: 'left', color: c.sub, fontSize: 12 }}>
                 <th style={{ padding: '12px 16px' }}>Navn</th>
                 <th style={{ padding: '12px 16px' }}>Email</th>
                 <th style={{ padding: '12px 16px' }}>Timeløn</th>
@@ -200,7 +216,7 @@ export default function Medarbejdere() {
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>Chat</div>
+        <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>Chat</div>
         <div style={{ padding: '40px 24px', border: `1.5px dashed ${c.line}`, borderRadius: 14, textAlign: 'center', color: c.slate2, fontSize: 14 }}>
           Medarbejder-chat — bygges i en senere fase.
         </div>

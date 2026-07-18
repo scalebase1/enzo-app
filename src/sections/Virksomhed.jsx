@@ -102,7 +102,7 @@ export default function Virksomhed() {
               return (
                 <div key={f.noegle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{f.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: c.sub }}>{f.label}</span>
                     {f.paakraevet && (
                       <span style={{ fontSize: 11, fontWeight: 600, color: savner ? '#B45309' : c.slate }}>{savner ? 'påkrævet — mangler' : 'påkrævet'}</span>
                     )}

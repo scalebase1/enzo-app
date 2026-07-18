@@ -11,8 +11,7 @@ const fmtDato = (iso) => {
 const TYPE = {
   tekst: { bg: '#F1F5F9', col: '#334155', txt: 'Tekst' },
   billede: { bg: '#F3E8FF', col: '#6B21A8', txt: 'Billede' },
-  dokument: { bg: '#FEF3C7', col: '#92400E', txt: 'Dokument' },
-}
+  dokument: { bg: '#FEF3C7', col: '#92400E', txt: 'Dokument' } }
 
 const erBillede = (v) => !!v?.fil_url && typeof v?.mime === 'string' && v.mime.startsWith('image/')
 
@@ -44,8 +43,7 @@ function Overlay({ lukVedBackdrop, onClose, width = 560, children }) {
   const props = lukVedBackdrop
     ? {
         onMouseDown: (e) => { ned.current = e.target === e.currentTarget },
-        onClick: (e) => { if (ned.current && e.target === e.currentTarget) onClose() },
-      }
+        onClick: (e) => { if (ned.current && e.target === e.currentTarget) onClose() } }
     : {}
   return (
     <div {...props} style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 60, fontFamily: font }}>
@@ -65,7 +63,7 @@ function ModalHead({ titel, onClose, disabled }) {
   )
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
 
 // ---------- Formular (opret/rediger) ----------
 function VidenForm({ viden, onClose, onSaved }) {

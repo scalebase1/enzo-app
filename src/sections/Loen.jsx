@@ -47,8 +47,7 @@ function Pill({ aktiv, onClick, children }) {
         border: `1.5px solid ${aktiv ? c.ink : c.line}`,
         background: aktiv ? c.ink : c.card,
         color: aktiv ? '#fff' : c.slate2,
-        borderRadius: 20, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
-      }}
+        borderRadius: 20, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font }}
     >
       {children}
     </button>
@@ -58,7 +57,7 @@ function Pill({ aktiv, onClick, children }) {
 function TotalTile({ label, value }) {
   return (
     <div style={card}>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
+      <div style={{ fontSize: 12, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 25, fontWeight: 800, marginTop: 6 }}>{value}</div>
     </div>
   )
@@ -104,8 +103,7 @@ export default function Loen() {
   // RPC leverer allerede loen desc → bevar orden; del i har-timer / uden-timer.
   const { medTimer, udenTimer } = useMemo(() => ({
     medTimer: medarbejdere.filter((m) => Number(m.timer) > 0),
-    udenTimer: medarbejdere.filter((m) => !(Number(m.timer) > 0)),
-  }), [medarbejdere])
+    udenTimer: medarbejdere.filter((m) => !(Number(m.timer) > 0)) }), [medarbejdere])
 
   return (
     <div style={{ fontFamily: font }}>
@@ -144,7 +142,7 @@ export default function Loen() {
 
                 {udenTimer.length > 0 && (
                   <>
-                    <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em', color: c.slate, background: c.bg, borderTop: medTimer.length > 0 ? `1px solid ${c.line}` : 'none' }}>
+                    <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: c.slate, background: c.bg, borderTop: medTimer.length > 0 ? `1px solid ${c.line}` : 'none' }}>
                       Uden registrerede timer i perioden
                     </div>
                     {udenTimer.map((m, i) => <MdrRaekke key={`u-${m.navn}-${i}`} m={m} i={i} daempet />)}

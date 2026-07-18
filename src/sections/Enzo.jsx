@@ -115,8 +115,7 @@ function EnzoChat({ onSvar }) {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatInput: t, sessionId }),
-        signal: ctrl.signal,
-      })
+        signal: ctrl.signal })
       clearTimeout(timer)
       const raw = await res.text()
       let d = null
@@ -147,8 +146,7 @@ function EnzoChat({ onSvar }) {
           overflowWrap: 'break-word',
           ...(m.rolle === 'bruger'
             ? { background: c.blue, color: '#fff', borderBottomRightRadius: 4 }
-            : { background: c.card, border: `1px solid ${c.line}`, color: c.text, borderBottomLeftRadius: 4 }),
-        }}
+            : { background: c.card, border: `1px solid ${c.line}`, color: c.text, borderBottomLeftRadius: 4 }) }}
       >
         {m.tekst}
       </div>
@@ -158,7 +156,7 @@ function EnzoChat({ onSvar }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+        <div style={{ fontSize: 12, color: c.sub }}>
           Chat med Enzo
         </div>
         <button
@@ -278,8 +276,7 @@ export default function Enzo() {
                 fontSize: 14,
                 ...(kvittering.kind === 'ok' && { background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534' }),
                 ...(kvittering.kind === 'fejl' && { background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }),
-                ...(kvittering.kind === 'neutral' && { color: c.slate2 }),
-              }}
+                ...(kvittering.kind === 'neutral' && { color: c.slate2 }) }}
             >
               {kvittering.tekst}
             </div>
@@ -324,7 +321,7 @@ export default function Enzo() {
               ))}
 
               <div style={{ marginTop: 28 }}>
-                <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>
                   Besluttet (sidste 7 dage)
                 </div>
                 {besluttede.length === 0 && (

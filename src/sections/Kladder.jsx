@@ -34,8 +34,7 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
       style={{
         border: `1.5px solid ${aktiv ? c.ink : c.line}`, background: aktiv ? c.ink : c.card, color: aktiv ? '#fff' : c.slate2,
         borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-      }}
+        display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {tekst}<span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
     </button>
@@ -56,7 +55,7 @@ function Overlay({ lukVedBackdrop, onClose, width = 620, children }) {
   )
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
 
 // Læse-visning (sendt) — backdrop lukker gerne, ingen redigering.
 function SendtVisning({ kladde, onClose }) {

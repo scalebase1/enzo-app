@@ -13,8 +13,7 @@ export default function Placeholder({ title, note }) {
           borderRadius: 14,
           textAlign: 'center',
           color: c.slate2,
-          fontSize: 14,
-        }}
+          fontSize: 14 }}
       >
         Placeholder — {title}
       </div>

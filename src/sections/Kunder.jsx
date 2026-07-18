@@ -41,8 +41,7 @@ function StatusPill({ status }) {
     bekraeftet: { bg: '#DCFCE7', col: '#166534', txt: 'bekræftet' },
     lukket: { bg: '#DCFCE7', col: '#166534', txt: 'lukket' },
     klar_til_bekraeftelse: { bg: '#FEF3C7', col: '#92400E', txt: 'afventer' },
-    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' },
-  }
+    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' } }
   const s = map[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
   return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>{s.txt}</span>
 }
@@ -50,7 +49,7 @@ function StatusPill({ status }) {
 function Noegletal({ label, value }) {
   return (
     <div style={{ ...card, padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
+      <div style={{ fontSize: 11, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 19, fontWeight: 800, marginTop: 4 }}>{value}</div>
     </div>
   )
@@ -68,7 +67,7 @@ const konceptTekst = (b) => {
 function BookingListe({ titel, rows, tom }) {
   return (
     <div style={{ marginTop: 18 }}>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>{titel}</div>
+      <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>{titel}</div>
       {(!rows || rows.length === 0) ? (
         <div style={{ padding: '14px 16px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>{tom}</div>
       ) : (
@@ -113,8 +112,7 @@ function RedigerFelt({ label, value, onChange, placeholder, multiline }) {
 
 const tomForm = (k) => ({
   navn: k.navn || '', firma: k.firma || '', email: k.email || '',
-  telefon: k.telefon || '', adresse: k.adresse || '', noter: k.noter || '',
-})
+  telefon: k.telefon || '', adresse: k.adresse || '', noter: k.noter || '' })
 
 function KundeProfil({ kunde, onClose, onSaved }) {
   const [rediger, setRediger] = useState(false)
@@ -155,8 +153,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
     setBusy(true)
     const { data, error } = await supabase.rpc('admin_handling', {
       p_aktion: 'kunde_opdater',
-      p_payload: payload,
-    })
+      p_payload: payload })
     setBusy(false)
 
     // En fejl kan komme som `error` ELLER som `data.ok === false`. Tjek begge, vis teksten ORDRET.
@@ -215,7 +212,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
 
         {/* Kontakt */}
         <div style={{ marginTop: 18, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
-          <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Kontakt</div>
+          <div style={{ fontSize: 12, color: c.sub, marginBottom: 10 }}>Kontakt</div>
           {rediger ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <RedigerFelt label="Email" value={form.email} onChange={saet('email')} placeholder="Email" />
@@ -242,7 +239,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
               <Kontaktlinje label="Oprettet" value={fmtDato(kunde.oprettet)} />
               {kunde.noter && (
                 <div style={{ marginTop: 4, padding: '10px 14px', background: c.bg, borderRadius: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>Noter</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: c.sub }}>Noter</div>
                   <div style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{kunde.noter}</div>
                 </div>
               )}
@@ -277,8 +274,7 @@ function KundeKort({ kunde, onClick }) {
       onClick={onClick}
       style={{
         ...card, textAlign: 'left', cursor: 'pointer', fontFamily: font, display: 'flex', flexDirection: 'column', gap: 0,
-        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : (manglerAdresse ? `4px solid ${c.red}` : `1px solid ${c.line}`),
-      }}
+        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : (manglerAdresse ? `4px solid ${c.red}` : `1px solid ${c.line}`) }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ minWidth: 0 }}>
