@@ -25,8 +25,7 @@ const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const TONE = {
   blue: { background: '#E8F0FE', color: '#1E3A8A', border: c.blue },
   green: { background: '#DCFCE7', color: '#166534', border: c.green },
-  slate: { background: '#F1F5F9', color: c.slate2, border: c.slate },
-}
+  slate: { background: '#F1F5F9', color: c.slate2, border: c.slate } }
 
 // chip.tone kan vaere en TONE-noegle eller et farve-objekt (enheds-farver).
 const toneStil = (tone) => (tone && typeof tone === 'object' ? tone : (TONE[tone] || TONE.blue))
@@ -62,7 +61,7 @@ function InfoBoks({ tekst }) {
   if (!tekst) return null
   return (
     <div style={{ marginTop: 14, padding: '10px 14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '.04em' }}>Info · logistik</div>
+      <div style={{ fontSize: 11, fontWeight: 800, color: '#92400E' }}>Info · logistik</div>
       <div style={{ fontSize: 14, marginTop: 5, whiteSpace: 'pre-wrap', color: c.ink }}>{tekst}</div>
     </div>
   )
@@ -138,7 +137,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {UGEDAGE.map((u) => (
-            <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 700, color: c.sub, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: `1px solid ${c.line}` }}>
+            <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 700, color: c.sub, textAlign: 'center', borderBottom: `1px solid ${c.line}` }}>
               {u}
             </div>
           ))}
@@ -159,8 +158,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 3,
-                  cursor: onDayClick ? 'pointer' : 'default',
-                }}
+                  cursor: onDayClick ? 'pointer' : 'default' }}
               >
                 <div style={{ textAlign: 'right', marginBottom: 2 }}>
                   <span
@@ -169,8 +167,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                       minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11,
                       fontSize: 12.5, fontWeight: erIdag ? 800 : 500,
                       color: erIdag ? '#fff' : (inMonth ? c.text : c.slate),
-                      background: erIdag ? c.blue : 'transparent',
-                    }}
+                      background: erIdag ? c.blue : 'transparent' }}
                   >
                     {d.getDate()}
                   </span>
@@ -187,8 +184,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                         padding: '3px 6px', fontSize: 11.5, lineHeight: 1.3, cursor: 'pointer',
                         fontFamily: font, overflow: 'hidden', display: 'block',
                         background: t.background, color: t.color, borderLeft: `3px solid ${t.border}`,
-                        textDecoration: e.chip.struck ? 'line-through' : 'none',
-                      }}
+                        textDecoration: e.chip.struck ? 'line-through' : 'none' }}
                     >
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {e.chip.tid && <span style={{ fontWeight: 700 }}>{e.chip.tid} </span>}
@@ -261,8 +257,7 @@ function BookingBadge({ status, aflyst }) {
 const DAEKNING = {
   fuldt_bemandet: { bg: '#DCFCE7', border: '#86EFAC', col: '#166534', tekst: 'Fuldt bemandet — ingen åbne vagter.' },
   vagter_aabnet: { bg: '#E8F0FE', border: '#93C5FD', col: '#1E3A8A', tekst: 'Vagter åbnet — alle nødvendige vagter er oprettet.' },
-  delvis: { bg: '#FEF3C7', border: '#FCD34D', col: '#92400E', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' },
-}
+  delvis: { bg: '#FEF3C7', border: '#FCD34D', col: '#92400E', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' } }
 
 function ShiftBadge({ status }) {
   const map = {
@@ -270,8 +265,7 @@ function ShiftBadge({ status }) {
     tildelt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'tildelt' },
     bekraeftet: { bg: '#DCFCE7', col: '#166534', txt: 'bekræftet' },
     byttet: { bg: '#F1F5F9', col: '#4B5563', txt: 'byttet' },
-    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' },
-  }
+    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' } }
   const s = map[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
   return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
 }
@@ -425,7 +419,7 @@ function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger 
       )}
 
       <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Vagter</div>
+        <div style={{ fontSize: 12, color: c.sub, marginBottom: 10 }}>Vagter</div>
         {rosterLoading && <div style={{ color: c.sub, fontSize: 14 }}>Henter vagter …</div>}
         {rosterFejl && <div style={{ color: c.red, fontSize: 13 }}>Fejl: {rosterFejl}</div>}
         {!rosterLoading && !rosterFejl && roster && roster.length === 0 && (
@@ -488,7 +482,7 @@ const fmtKr = (n) => (n == null ? '—' : `${Number(n).toLocaleString('da-DK', {
 const fmtPct = (n) => (n == null ? null : `${Number(n).toLocaleString('da-DK', { maximumFractionDigits: 1 })}%`)
 
 const SEKTION_STIL = { marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14 }
-const SEKTION_TITEL = { fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }
+const SEKTION_TITEL = { fontSize: 12, color: c.sub, marginBottom: 10 }
 
 function IndkoebSektion({ bookingId }) {
   const [loading, setLoading] = useState(true)
@@ -539,8 +533,7 @@ function IndkoebSektion({ bookingId }) {
     const { data, error } = await supabase.rpc('indkoeb_gem', {
       p_booking_id: bookingId,
       p_items: rene,
-      p_godkendt: godkendt,
-    })
+      p_godkendt: godkendt })
     setBusy(null)
     if (error) { setHandlingFejl(error.message); return }
     if (!data || data.ok === false) { setHandlingFejl(data?.fejl || 'Kunne ikke gemme listen.'); return }
@@ -691,8 +684,7 @@ function OekonomiSektion({ bookingId }) {
     setBusy(true)
     const { data: d, error } = await supabase.rpc('booking_saet_vareomkostning', {
       p_booking_id: bookingId,
-      p_vareomkostning: belob,
-    })
+      p_vareomkostning: belob })
     if (error) { setBusy(false); setSaetFejl(error.message); return }
     if (!d || d.ok === false) { setBusy(false); setSaetFejl(d?.fejl || 'Kunne ikke gemme vareomkostningen.'); return }
     await beregn()   // genberegn med den nye omkostning
@@ -778,8 +770,7 @@ function FilterPill({ aktiv, onClick, tekst, farve }) {
         background: aktiv ? (farve ? farve.background : c.ink) : c.card,
         color: aktiv ? (farve ? farve.color : '#fff') : c.slate2,
         borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-      }}
+        display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {farve && <span style={{ width: 9, height: 9, borderRadius: 5, background: farve.border }} />}
       {tekst}
@@ -791,8 +782,7 @@ function FilterPill({ aktiv, onClick, tekst, farve }) {
 const MANGLER_DA = {
   name: 'navn', email: 'email', phone: 'telefon', company: 'firma', type: 'kundetype',
   event_date: 'dato', food_type: 'mad', covers: 'kuverter', staff_required: 'medarbejdere',
-  total_price: 'pris', enhed_id: 'enhed', info: 'info',
-}
+  total_price: 'pris', enhed_id: 'enhed', info: 'info' }
 
 function AdminKalender() {
   const [data, setData] = useState(null)
@@ -850,8 +840,7 @@ function AdminKalender() {
       key: b.booking_id,
       start,
       chip: { tid: fmtTid(start), label: renTitel(b.titel), tone: b.aflyst ? 'slate' : (farver.get(b.enhed) || UDEN_ENHED_FARVE), struck: b.aflyst, koncepter: flereKoncepter(b) ? konceptListe(b) : null },
-      raw: b,
-    }
+      raw: b }
   }), [synlige, farver])
 
   const iVisning = synlige.filter((b) => iMaaned(new Date(b.start), cursor)).length
@@ -971,7 +960,7 @@ function MiniListe({ titel, note, tom, children }) {
   return (
     <div style={{ flex: '1 1 300px', minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{titel}</div>
+        <div style={{ fontSize: 12, color: c.sub }}>{titel}</div>
         {note && <div style={{ fontSize: 12, color: c.slate2 }}>{note}</div>}
       </div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
@@ -1017,8 +1006,7 @@ function MedarbejderKalender() {
     setBusy('meld'); setHandlingFejl('')
     const { data: res, error } = await supabase.rpc('medarbejder_handling', {
       p_aktion: 'meld_ledig',
-      p_payload: { dato, fra_tid: fraTid || null, til_tid: tilTid || null, note: note.trim() || null },
-    })
+      p_payload: { dato, fra_tid: fraTid || null, til_tid: tilTid || null, note: note.trim() || null } })
     if (error) { setBusy(null); setHandlingFejl('Fejl: ' + error.message); return }
     if (!res || res.ok === false) { setBusy(null); setHandlingFejl(res?.fejl || 'Kunne ikke melde ledig.'); return }
     setFraTid(''); setTilTid(''); setNote('')
@@ -1030,8 +1018,7 @@ function MedarbejderKalender() {
     setBusy(id); setHandlingFejl('')
     const { data: res, error } = await supabase.rpc('medarbejder_handling', {
       p_aktion: 'fjern_ledig',
-      p_payload: { id },
-    })
+      p_payload: { id } })
     if (error) { setBusy(null); setHandlingFejl('Fejl: ' + error.message); return }
     if (!res || res.ok === false) { setBusy(null); setHandlingFejl(res?.fejl || 'Kunne ikke fjerne ledigheden.'); return }
     await load()
@@ -1042,8 +1029,7 @@ function MedarbejderKalender() {
     setVagtBusy(shiftId); setVagtFejl('')
     const { data: res, error } = await supabase.rpc('medarbejder_handling', {
       p_aktion: aktion,
-      p_payload: { shift_id: shiftId },
-    })
+      p_payload: { shift_id: shiftId } })
     if (error) { setVagtBusy(null); setVagtFejl('Fejl: ' + error.message); return }
     if (!res || res.ok === false) { setVagtBusy(null); setVagtFejl(res?.fejl || 'Handlingen fejlede.'); return }
     await load()
@@ -1058,8 +1044,7 @@ function MedarbejderKalender() {
     key: v.shift_id,
     start: new Date(v.dato),
     chip: { label: `${v.koncept} · ${v.covers} kuverter`, tone: v.status === 'bekraeftet' ? 'green' : 'blue', struck: false },
-    raw: v,
-  })), [vagter])
+    raw: v })), [vagter])
 
   const iVisning = vagter.filter((v) => iMaaned(new Date(v.dato), cursor)).length
 
@@ -1138,7 +1123,7 @@ function MedarbejderKalender() {
             </MiniListe>
 
             <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>Min ledighed</div>
+              <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>Min ledighed</div>
               <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: 14 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Meld dig ledig</div>

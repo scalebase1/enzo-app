@@ -3,7 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase, authLandingType } from './supabaseClient.js'
 import Login from './components/Login.jsx'
 import SetPassword from './components/SetPassword.jsx'
-import Sidebar from './components/Sidebar.jsx'
+import Sidebar, { MOBIL_TOPBAR_HOEJDE } from './components/Sidebar.jsx'
+import { useSmalSkaerm } from './komponenter/useSmalSkaerm.js'
 import Overblik from './sections/Overblik.jsx'
 import Medarbejdere from './sections/Medarbejdere.jsx'
 import Kunder from './sections/Kunder.jsx'
@@ -55,6 +56,7 @@ function NoAccess({ email }) {
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [role, setRole] = useState(undefined)
+  const smal = useSmalSkaerm()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -96,7 +98,17 @@ export default function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: font, background: c.bg }}>
       <Sidebar sections={sections} userEmail={session.user.email} role={role} onLogout={() => supabase.auth.signOut()} />
-      <main style={{ flex: 1, padding: '28px 32px', overflow: 'auto' }}>
+      {/* minWidth:0 er afgoerende: uden den kan flex-boernene tvinge hele
+          siden bredere end skaermen og skabe vandret scroll. */}
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          maxWidth: '100%',
+          overflowX: 'hidden',
+          padding: smal ? `${MOBIL_TOPBAR_HOEJDE + 16}px 16px 32px` : '28px 32px',
+        }}
+      >
         <Routes>
           <Route path="/" element={<Navigate to={'/' + home} replace />} />
           <Route path="/overblik" element={adminOnly(<Overblik />)} />

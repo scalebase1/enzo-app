@@ -16,8 +16,7 @@ const STATUS = {
   kladde: { bg: '#E5E7EB', col: '#4B5563', txt: 'Kladde' },
   udstedt: { bg: '#FEF3C7', col: '#92400E', txt: 'Udstedt' }, // udstedt ≠ sendt: nr. tildelt, men kunden har intet fået endnu
   sendt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'Sendt' },
-  betalt: { bg: '#DCFCE7', col: '#166534', txt: 'Betalt' },
-}
+  betalt: { bg: '#DCFCE7', col: '#166534', txt: 'Betalt' } }
 
 // faktura_tekst/faktura_send returnerer denne fejl ordret når stamdata mangler — signal til at vise link.
 const MANGLER_VIRKSOMHED = 'Virksomhedsoplysninger mangler'
@@ -36,8 +35,7 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
         background: aktiv ? c.ink : c.card,
         color: aktiv ? '#fff' : c.slate2,
         borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-      }}
+        display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {tekst}
       <span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
@@ -48,7 +46,7 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
 function Detalje({ label, value }) {
   return (
     <div>
-      <div style={{ fontSize: 11, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
+      <div style={{ fontSize: 11, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>{value}</div>
     </div>
   )
@@ -292,7 +290,7 @@ export default function Fakturaer() {
           {/* Manglende fakturaer */}
           <div style={{ marginTop: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em', color: c.slate2 }}>Manglende fakturaer</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2 }}>Manglende fakturaer</div>
               {manglende.length > 0 && <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>{manglende.length}</span>}
             </div>
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>

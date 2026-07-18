@@ -31,7 +31,7 @@ const erUUID = (s) => typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f
 function KPI({ label, value, sub, attention }) {
   return (
     <div style={card}>
-      <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
+      <div style={{ fontSize: 12, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 25, fontWeight: 800, marginTop: 6, color: attention ? c.amber : c.ink }}>{value}</div>
       {sub && <div style={{ fontSize: 12.5, color: c.slate2, marginTop: 4 }}>{sub}</div>}
     </div>
@@ -47,7 +47,7 @@ function Kort({ titel, badge, children, style }) {
   return (
     <div style={{ ...card, ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em', color: c.slate2 }}>{titel}</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2 }}>{titel}</div>
         <AttnBadge n={badge} />
       </div>
       {children}
@@ -108,7 +108,7 @@ function HelbredBanner({ h }) {
       )}
       {advarsler.length > 0 && (
         <div style={{ ...card, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>Kræver handling</div>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Kræver handling</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
             {advarsler.map((a, i) => <li key={i}>{a}</li>)}
           </ul>
@@ -182,7 +182,7 @@ export default function Overblik() {
 
           {/* Omsætning pr. måned */}
           <div style={{ ...card, marginTop: sp(3) }}>
-            <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em', color: c.slate2, marginBottom: 6 }}>Omsætning pr. måned</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2, marginBottom: 6 }}>Omsætning pr. måned</div>
             <SoejleGraf data={graf} />
           </div>
 

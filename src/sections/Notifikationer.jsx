@@ -11,8 +11,7 @@ const fmtTid = (iso) => {
 // Kanaler er visuelt distinkte — Telegram (blaa) vs Email (violet).
 const KANAL = {
   telegram: { bg: '#E8F0FE', col: '#1E3A8A', prik: '#0066FF', txt: 'Telegram' },
-  email: { bg: '#F3E8FF', col: '#6B21A8', prik: '#9333EA', txt: 'Email' },
-}
+  email: { bg: '#F3E8FF', col: '#6B21A8', prik: '#9333EA', txt: 'Email' } }
 
 function KanalBadge({ kanal }) {
   const k = KANAL[kanal] || { bg: '#F1F5F9', col: c.slate2, prik: c.slate, txt: kanal || 'ukendt' }
@@ -28,8 +27,7 @@ function StatusTekst({ status }) {
   const map = {
     sendt: { col: '#166534', txt: 'sendt' },
     fejlet: { col: c.red, txt: 'fejlet' },
-    afventer: { col: '#92400E', txt: 'afventer' },
-  }
+    afventer: { col: '#92400E', txt: 'afventer' } }
   const s = map[status] || { col: c.slate2, txt: status || '—' }
   return <span style={{ fontSize: 12, fontWeight: 600, color: s.col }}>{s.txt}</span>
 }
@@ -43,8 +41,7 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
         background: aktiv ? c.ink : c.card,
         color: aktiv ? '#fff' : c.slate2,
         borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-      }}
+        display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {tekst}
       <span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>

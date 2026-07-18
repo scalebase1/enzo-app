@@ -26,8 +26,7 @@ export default function Login() {
     setBusy(true)
     setStatus('Sender reset-link …')
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin,
-    })
+      redirectTo: window.location.origin })
     setBusy(false)
     setStatus(error ? 'Fejl: ' + error.message : 'Hvis emailen findes, er et reset-link på vej. Tjek din indbakke.')
   }

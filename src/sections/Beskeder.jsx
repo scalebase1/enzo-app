@@ -76,8 +76,7 @@ function BeskedBoble({ besked, erAdmin, busy, fejl, onUdfoer }) {
       <div style={{ fontSize: 11, color: c.sub }}>{besked.afsender || '—'} · {fmtTid(besked.tidspunkt)}</div>
       <div style={{
         maxWidth: '82%', background: mig ? c.blue : '#F1F5F9', color: mig ? '#fff' : c.ink,
-        padding: '10px 14px', borderRadius: 12, fontSize: 14, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-      }}>
+        padding: '10px 14px', borderRadius: 12, fontSize: 14, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
         {besked.tekst}
       </div>
       <Handling besked={besked} busy={busy} onUdfoer={onUdfoer} />
@@ -97,8 +96,7 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
         width: '100%', textAlign: 'left', fontFamily: font, cursor: 'pointer', display: 'block',
         background: valgt ? '#EEF2F7' : 'transparent', border: 'none',
         borderLeft: valgt ? `3px solid ${c.blue}` : '3px solid transparent',
-        borderBottom: `1px solid ${c.line}`, padding: '12px 14px',
-      }}
+        borderBottom: `1px solid ${c.line}`, padding: '12px 14px' }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: 14, fontWeight: ulaeste > 0 ? 800 : 700, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -116,8 +114,7 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
 
       <div style={{
         fontSize: 12.5, color: ulaeste > 0 ? c.ink : c.sub, marginTop: 4,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {traad.seneste || 'Ingen beskeder endnu.'}
       </div>
 
@@ -242,8 +239,7 @@ function NyBesked({ onClose, onSendt }) {
       p_tekst: tekst,
       p_emne: emne.trim() || null,
       p_handling: handling,
-      p_booking_id: null,
-    })
+      p_booking_id: null })
     setBusy(false)
     if (error) { setFejl(error.message); return }
     if (!data || data.ok === false) { setFejl(data?.fejl || 'Beskeden kunne ikke sendes.'); return }
@@ -261,7 +257,7 @@ function NyBesked({ onClose, onSendt }) {
           <button onClick={onClose} disabled={busy} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1, padding: 0 }}>×</button>
         </div>
 
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginTop: 16, marginBottom: 8 }}>Modtagere</div>
+        <div style={{ fontSize: 12, color: c.sub, marginTop: 16, marginBottom: 8 }}>Modtagere</div>
         {hentFejl && <div style={{ ...card, padding: '10px 14px', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{hentFejl}</div>}
         {!hentFejl && medarbejdere === null && <div style={{ color: c.sub, fontSize: 14 }}>Henter medarbejdere …</div>}
         {!hentFejl && medarbejdere !== null && aktive.length === 0 && (
@@ -303,7 +299,7 @@ function NyBesked({ onClose, onSendt }) {
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>Vedhæft vagt</div>
+                <div style={{ fontSize: 12, color: c.sub }}>Vedhæft vagt</div>
                 <button
                   onClick={() => { setVedhaeft(false); setValgtVagt(null) }}
                   style={{ border: 'none', background: 'transparent', color: c.slate2, fontSize: 13, cursor: 'pointer', padding: 0 }}
@@ -456,7 +452,7 @@ function BeskederUI({ erAdmin }) {
 
   const listePanel = (
     <div style={{ ...card, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: smal ? undefined : '72vh' }}>
-      <div style={{ padding: '12px 14px', borderBottom: `1px solid ${c.line}`, fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+      <div style={{ padding: '12px 14px', borderBottom: `1px solid ${c.line}`, fontSize: 12, color: c.sub }}>
         Samtaler
       </div>
       <div style={{ overflow: 'auto', flex: 1 }}>
