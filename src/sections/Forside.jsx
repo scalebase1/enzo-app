@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
-import { c, card, btn, input, font, sp } from '../ui.js'
+import { c, card, btn, input, font, sp, tone } from '../ui.js'
 import { PROXY as ENZO_CHAT } from './Enzo.jsx'
 import { BookingDetalje, byggeEnhedFarver } from './Kalender.jsx'
+import { StatusChip } from '../komponenter/index.jsx'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
 const timer = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 1 })} t`
@@ -34,26 +35,9 @@ function useSmalSkaerm(bred = 899) {
   return smal
 }
 
-function Chip({ tekst, bg, col }) {
-  return (
-    <span style={{ background: bg || '#F1F5F9', color: col || c.slate2, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      {tekst}
-    </span>
-  )
-}
-
-const STATUS_STIL = {
-  bekraeftet: { bg: '#DCFCE7', col: '#166534' },
-  lukket: { bg: '#DCFCE7', col: '#166534' },
-  klar_til_bekraeftelse: { bg: '#FEF3C7', col: '#92400E' },
-  tildelt: { bg: '#E8F0FE', col: '#1E3A8A' },
-  ny: { bg: '#FEF3C7', col: '#92400E' },
-  aflyst: { bg: '#FEE2E2', col: '#991B1B' },
-}
-function StatusChip({ status }) {
-  if (!status) return null
-  const s = STATUS_STIL[status] || { bg: '#E5E7EB', col: '#4B5563' }
-  return <Chip tekst={String(status).replace(/_/g, ' ')} bg={s.bg} col={s.col} />
+// Lokale chips bruger nu det faelles komponent + tone-tokens.
+function Chip({ tekst, farve }) {
+  return <StatusChip tekst={tekst} farve={farve || tone.neutral} />
 }
 
 // bemanding kommer som "bekraeftede/behov", fx "0/2".
@@ -61,7 +45,7 @@ function BemandingChip({ bemanding }) {
   if (!bemanding) return null
   const [a, b] = String(bemanding).split('/').map((n) => Number(n))
   const fuldt = Number.isFinite(a) && Number.isFinite(b) && a >= b
-  return <Chip tekst={`${bemanding} bemandet`} bg={fuldt ? '#DCFCE7' : '#FEF3C7'} col={fuldt ? '#166534' : '#92400E'} />
+  return <Chip tekst={`${bemanding} bemandet`} farve={fuldt ? tone.ok : tone.advarsel} />
 }
 
 function Koncepter({ liste }) {
@@ -74,7 +58,7 @@ function Noegletal({ label, value, fremhaev }) {
   return (
     <div style={{ ...card, padding: '14px 16px' }}>
       <div style={{ fontSize: 11, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: fremhaev ? c.amber : c.ink }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: fremhaev ? c.amber : c.ink }}>{value}</div>
     </div>
   )
 }
@@ -90,7 +74,7 @@ function Hilsen({ navn, undertekst }) {
 
 function Tom({ tekst }) {
   return (
-    <div style={{ padding: '16px 18px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>
+    <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15, background: c.card }}>
       {tekst}
     </div>
   )
@@ -213,14 +197,14 @@ function FraEnzo() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {haster && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.red, flexShrink: 0 }} />}
-              <div style={{ fontSize: 14, fontWeight: 700, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {p.titel}
               </div>
             </div>
             <div style={{ fontSize: 12.5, color: c.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {p.undertekst}
             </div>
-            {p.handling && <div style={{ fontSize: 12, color: haster ? c.red : c.slate2, fontWeight: 600, marginTop: 3 }}>{p.handling}</div>}
+            {p.handling && <div style={{ fontSize: 12, color: haster ? c.red : c.slate2, fontWeight: 500, marginTop: 3 }}>{p.handling}</div>}
           </div>
         )
       })}
@@ -293,14 +277,14 @@ function AdminForside({ data, smal, onDataAendret }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: c.ink }}>{a.kunde}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>{a.kunde}</div>
                   <div style={{ fontSize: 13, color: c.slate2 }}>{fmtDatoTid(a.dato)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, color: c.sub }}>{a.kuverter != null ? `${a.kuverter} kuverter` : '—'}</span>
                   <Koncepter liste={a.koncepter} />
                   <BemandingChip bemanding={a.bemanding} />
-                  <StatusChip status={a.status} />
+                  <StatusChip status={a.status} tekst={a.status_tekst} />
                 </div>
               </button>
             ))}
@@ -365,18 +349,17 @@ function MedarbejderForside({ data, smal }) {
             {vagter.map((v, i) => (
               <div key={`${v.type}-${v.id}`} style={{ padding: '14px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: c.ink }}>{v.titel}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>{v.titel}</div>
                   <div style={{ fontSize: 13, color: c.slate2 }}>{v.type === 'vogndrift' ? fmtDato(v.dato) : fmtDatoTid(v.dato)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                   <Chip
                     tekst={v.type === 'vogndrift' ? 'Vogndrift' : 'Arrangement'}
-                    bg={v.type === 'vogndrift' ? '#F3E8FF' : '#E8F0FE'}
-                    col={v.type === 'vogndrift' ? '#6B21A8' : '#1E3A8A'}
+                    farve={v.type === 'vogndrift' ? tone.neutral : tone.aktiv}
                   />
                   {v.undertekst && <span style={{ fontSize: 13, color: c.sub }}>{v.undertekst}</span>}
                   <Koncepter liste={v.koncepter} />
-                  <StatusChip status={v.status} />
+                  <StatusChip status={v.status} tekst={v.status_tekst} />
                 </div>
               </div>
             ))}

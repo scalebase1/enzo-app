@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font, sp } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
+import { tone } from '../ui.js'
 
 // Dansk beloeb: 180200 -> "180.200 kr". Tomt/ugyldigt -> "0 kr".
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
@@ -11,46 +13,29 @@ const fmtDato = (iso) => {
 }
 
 function LoyalBadge() {
-  return (
-    <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      ★ Loyal
-    </span>
-  )
+  return <StatusChip tekst="★ Loyal" farve={tone.advarsel} />
 }
 
 // Momsloven kraever koebers adresse paa fakturaen. Uden adresse kan kunden ikke faktureres.
 function ManglerAdresseBadge() {
-  return (
-    <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      ⚠ Mangler adresse
-    </span>
-  )
+  return <StatusChip tekst="⚠ Mangler adresse" farve={tone.fejl} />
 }
 
 function TypeBadge({ type }) {
   const virk = type === 'virksomhed'
-  return (
-    <span style={{ background: virk ? '#E8F0FE' : '#F1F5F9', color: virk ? '#1E3A8A' : c.slate2, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
-      {virk ? 'Virksomhed' : 'Privat'}
-    </span>
-  )
+  return <StatusChip tekst={virk ? 'Virksomhed' : 'Privat'} farve={virk ? tone.aktiv : tone.neutral} />
 }
 
 function StatusPill({ status }) {
-  const map = {
-    bekraeftet: { bg: '#DCFCE7', col: '#166534', txt: 'bekræftet' },
-    lukket: { bg: '#DCFCE7', col: '#166534', txt: 'lukket' },
-    klar_til_bekraeftelse: { bg: '#FEF3C7', col: '#92400E', txt: 'afventer' },
-    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' } }
-  const s = map[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
-  return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>{s.txt}</span>
+  // crm_data har ikke status_tekst — vis enum'en laeseligt via StatusChip.
+  return <StatusChip status={status} />
 }
 
 function Noegletal({ label, value }) {
   return (
     <div style={{ ...card, padding: '12px 14px' }}>
       <div style={{ fontSize: 11, color: c.sub }}>{label}</div>
-      <div style={{ fontSize: 19, fontWeight: 800, marginTop: 4 }}>{value}</div>
+      <div style={{ fontSize: 19, fontWeight: 500, marginTop: 4 }}>{value}</div>
     </div>
   )
 }
@@ -69,19 +54,19 @@ function BookingListe({ titel, rows, tom }) {
     <div style={{ marginTop: 18 }}>
       <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>{titel}</div>
       {(!rows || rows.length === 0) ? (
-        <div style={{ padding: '14px 16px', border: `1.5px dashed ${c.line}`, borderRadius: 12, color: c.slate2, fontSize: 14 }}>{tom}</div>
+        <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15, background: c.card }}>{tom}</div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           {rows.map((b, i) => (
             <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', flexWrap: 'wrap' }}>
               <div style={{ minWidth: 120, flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtDato(b.dato)}</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{fmtDato(b.dato)}</div>
                 <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
-                  <span style={{ color: c.slate2, fontWeight: 600 }}>{konceptListe(b).length > 1 ? 'Koncepter:' : 'Koncept:'}</span> {konceptTekst(b)}
+                  <span style={{ color: c.slate2, fontWeight: 500 }}>{konceptListe(b).length > 1 ? 'Koncepter:' : 'Koncept:'}</span> {konceptTekst(b)}
                 </div>
               </div>
               <div style={{ fontSize: 13, color: c.slate2, minWidth: 74, textAlign: 'right' }}>{b.covers != null ? `${b.covers} kuv.` : '—'}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, minWidth: 90, textAlign: 'right' }}>{kr(b.beloeb)}</div>
+              <div style={{ fontSize: 14, fontWeight: 500, minWidth: 90, textAlign: 'right' }}>{kr(b.beloeb)}</div>
               <StatusPill status={b.status} />
             </div>
           ))}
@@ -184,7 +169,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>{kunde.navn}</div>
+                <div style={{ fontSize: 20, fontWeight: 500, color: c.ink, overflowWrap: 'anywhere' }}>{kunde.navn}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   <TypeBadge type={kunde.type} />
                   {kunde.loyal && <LoyalBadge />}
@@ -221,7 +206,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
               <RedigerFelt label="Noter" value={form.noter} onChange={saet('noter')} placeholder="Interne noter" multiline />
 
               {fejl && (
-                <div style={{ ...card, padding: '10px 14px', background: '#FEF2F2', border: `1px solid #FCA5A5`, color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
+                <div style={{ ...card, padding: '10px 14px', background: '#FBF1EF', border: `1px solid #E0B6AF`, color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{fejl}</div>
               )}
 
               <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
@@ -239,7 +224,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
               <Kontaktlinje label="Oprettet" value={fmtDato(kunde.oprettet)} />
               {kunde.noter && (
                 <div style={{ marginTop: 4, padding: '10px 14px', background: c.bg, borderRadius: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: c.sub }}>Noter</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: c.sub }}>Noter</div>
                   <div style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{kunde.noter}</div>
                 </div>
               )}
@@ -259,9 +244,9 @@ function Kontaktlinje({ label, value, advarsel }) {
     <div style={{ fontSize: 14, display: 'flex', gap: 8 }}>
       <span style={{ color: c.sub, minWidth: 72 }}>{label}</span>
       {advarsel ? (
-        <span style={{ fontWeight: 700, color: c.red }}>Mangler — kræves for at fakturere</span>
+        <span style={{ fontWeight: 500, color: c.red }}>Mangler — kræves for at fakturere</span>
       ) : (
-        <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{value || '—'}</span>
+        <span style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{value || '—'}</span>
       )}
     </div>
   )
@@ -278,7 +263,7 @@ function KundeKort({ kunde, onClick }) {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kunde.navn}</div>
+          <div style={{ fontSize: 16, fontWeight: 500, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kunde.navn}</div>
           {kunde.firma && <div style={{ fontSize: 13, color: c.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kunde.firma}</div>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -288,18 +273,18 @@ function KundeKort({ kunde, onClick }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 14 }}>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>{kr(kunde.omsaetning_total)}</div>
+        <div style={{ fontSize: 22, fontWeight: 500 }}>{kr(kunde.omsaetning_total)}</div>
         <div style={{ fontSize: 13, color: c.slate2 }}>{kunde.antal_events ?? 0} event{kunde.antal_events === 1 ? '' : 's'}</div>
       </div>
 
       <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${c.line}`, fontSize: 12.5 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ color: c.sub }}>Næste</div>
-          <div style={{ fontWeight: 600 }}>{fmtDato(kunde.naeste_event)}</div>
+          <div style={{ fontWeight: 500 }}>{fmtDato(kunde.naeste_event)}</div>
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ color: c.sub }}>Sidste</div>
-          <div style={{ fontWeight: 600 }}>{fmtDato(kunde.sidste_event)}</div>
+          <div style={{ fontWeight: 500 }}>{fmtDato(kunde.sidste_event)}</div>
         </div>
       </div>
     </button>
@@ -350,7 +335,7 @@ export default function Kunder() {
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Kunder</h1>
         {kunder && <span style={{ color: c.sub, fontSize: 14 }}>{total} kunde{total === 1 ? '' : 'r'}</span>}
         {kunder && udenAdresse > 0 && (
-          <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: 12.5, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+          <span style={{ background: '#F6E7E4', color: '#8C3E36', fontSize: 12.5, fontWeight: 500, padding: '3px 10px', borderRadius: 20 }}>
             ⚠ {udenAdresse} mangler adresse
           </span>
         )}

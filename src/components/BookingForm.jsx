@@ -41,7 +41,7 @@ const tilBeloeb = (s) => {
   return isNaN(n) ? null : n
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 500, color: c.sub, marginBottom: 4 }
 
 function Felt({ tekst, flex = 1, children }) {
   return (
@@ -164,7 +164,7 @@ export default function BookingForm({ enheder, booking, onClose, onSaved }) {
     >
       <div style={{ ...card, width: 540, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: c.ink }}>{erRedigering ? 'Rediger booking' : 'Ny booking'}</div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: c.ink }}>{erRedigering ? 'Rediger booking' : 'Ny booking'}</div>
           <button onClick={onClose} disabled={busy} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1, padding: 0 }}>×</button>
         </div>
 
@@ -172,7 +172,7 @@ export default function BookingForm({ enheder, booking, onClose, onSaved }) {
           <div style={{ color: c.sub, fontSize: 14, padding: '24px 0', textAlign: 'center' }}>Henter booking …</div>
         ) : hentFejl ? (
           <>
-            <div style={{ fontSize: 14, color: c.red, fontWeight: 600 }}>{hentFejl}</div>
+            <div style={{ fontSize: 14, color: c.red, fontWeight: 500 }}>{hentFejl}</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button style={btnGhost} onClick={onClose}>Luk</button>
             </div>
@@ -260,7 +260,7 @@ export default function BookingForm({ enheder, booking, onClose, onSaved }) {
               />
             </Felt>
 
-            {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600 }}>{fejl}</div>}
+            {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{fejl}</div>}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button style={{ ...btnGhost, opacity: busy ? 0.6 : 1 }} onClick={onClose} disabled={busy}>Annuller</button>

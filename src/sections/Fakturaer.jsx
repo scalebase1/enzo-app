@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, font, monoFont } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
 const fmtDato = (iso) => {
@@ -13,17 +14,17 @@ const fmtDato = (iso) => {
 const momsSats = (r) => (r == null ? null : `${Math.round(Number(r) <= 1 ? Number(r) * 100 : Number(r))}%`)
 
 const STATUS = {
-  kladde: { bg: '#E5E7EB', col: '#4B5563', txt: 'Kladde' },
-  udstedt: { bg: '#FEF3C7', col: '#92400E', txt: 'Udstedt' }, // udstedt ≠ sendt: nr. tildelt, men kunden har intet fået endnu
-  sendt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'Sendt' },
-  betalt: { bg: '#DCFCE7', col: '#166534', txt: 'Betalt' } }
+  kladde: { bg: '#F2F1ED', col: '#5B584F', txt: 'Kladde' },
+  udstedt: { bg: '#F6EEDD', col: '#8A5F14', txt: 'Udstedt' }, // udstedt ≠ sendt: nr. tildelt, men kunden har intet fået endnu
+  sendt: { bg: '#EAEEE5', col: '#4B5A40', txt: 'Sendt' },
+  betalt: { bg: '#E7EFE7', col: '#3B6349', txt: 'Betalt' } }
 
 // faktura_tekst/faktura_send returnerer denne fejl ordret når stamdata mangler — signal til at vise link.
 const MANGLER_VIRKSOMHED = 'Virksomhedsoplysninger mangler'
 
-function StatusBadge({ status }) {
-  const s = STATUS[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
-  return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{s.txt}</span>
+// Backendens paene danske label (status_tekst) vinder; ellers den lokale tabel.
+function StatusBadge({ status, tekst }) {
+  return <StatusChip status={status} tekst={tekst || STATUS[status]?.txt} />
 }
 
 function FilterPill({ aktiv, onClick, tekst, antal }) {
@@ -34,11 +35,11 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
         border: `1.5px solid ${aktiv ? c.ink : c.line}`,
         background: aktiv ? c.ink : c.card,
         color: aktiv ? '#fff' : c.slate2,
-        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
+        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: font,
         display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {tekst}
-      <span style={{ fontSize: 12, fontWeight: 700, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
     </button>
   )
 }
@@ -47,7 +48,7 @@ function Detalje({ label, value }) {
   return (
     <div>
       <div style={{ fontSize: 11, color: c.sub }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>{value}</div>
+      <div style={{ fontSize: 15, fontWeight: 500, marginTop: 3 }}>{value}</div>
     </div>
   )
 }
@@ -55,7 +56,7 @@ function Detalje({ label, value }) {
 // Link til stamdata-sektionen — vises når en fejl skyldes manglende virksomhedsoplysninger.
 function VirksomhedLink() {
   return (
-    <Link to="/virksomhed" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 700, color: c.blue, textDecoration: 'none' }}>
+    <Link to="/virksomhed" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 500, color: c.blue, textDecoration: 'none' }}>
       Gå til Virksomhedsoplysninger →
     </Link>
   )
@@ -183,13 +184,13 @@ export default function Fakturaer() {
       <p style={{ color: c.sub, marginTop: 0 }}>Faktura-livscyklus: kladde → udstedt → sendt → betalt. Opret manglende fakturaer fra bookinger.</p>
 
       {kvittering && (
-        <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <span>{kvittering}</span>
           <button onClick={() => setKvittering(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
         </div>
       )}
       {handlingFejl && (
-        <div style={{ ...card, marginTop: 16, background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ ...card, marginTop: 16, background: '#F6E7E4', border: '1px solid #E0B6AF', color: '#8C3E36', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div>{handlingFejl}</div>
             {handlingFejl.includes(MANGLER_VIRKSOMHED) && <VirksomhedLink />}
@@ -231,15 +232,15 @@ export default function Fakturaer() {
                   >
                     <span style={{ color: c.slate, fontSize: 12, width: 12 }}>{aaben ? '▾' : '▸'}</span>
                     <div style={{ flex: 1, minWidth: 140 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>
-                        {f.nummer || <span style={{ color: c.slate2, fontWeight: 600 }}>—</span>}
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>
+                        {f.nummer || <span style={{ color: c.slate2, fontWeight: 500 }}>—</span>}
                       </div>
                       <div style={{ fontSize: 13, color: c.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.kunde || 'Ukendt'}</div>
                     </div>
                     <div style={{ fontSize: 12.5, color: c.slate2, minWidth: 84 }}>{f.enhed || '—'}</div>
                     <div style={{ fontSize: 12.5, color: c.slate2, minWidth: 96 }}>{fmtDato(f.dato)}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, minWidth: 92, textAlign: 'right' }}>{kr(f.beloeb)}</div>
-                    <StatusBadge status={f.status} />
+                    <div style={{ fontSize: 14, fontWeight: 500, minWidth: 92, textAlign: 'right' }}>{kr(f.beloeb)}</div>
+                    <StatusBadge status={f.status} tekst={f.status_tekst} />
                     <div style={{ display: 'flex', gap: 6 }} onClick={(e) => e.stopPropagation()}>
                       {f.status === 'kladde' && (
                         <>
@@ -290,8 +291,8 @@ export default function Fakturaer() {
           {/* Manglende fakturaer */}
           <div style={{ marginTop: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2 }}>Manglende fakturaer</div>
-              {manglende.length > 0 && <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>{manglende.length}</span>}
+              <div style={{ fontSize: 12, fontWeight: 500, color: c.slate2 }}>Manglende fakturaer</div>
+              {manglende.length > 0 && <span style={{ background: '#F6EEDD', color: '#8A5F14', fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>{manglende.length}</span>}
             </div>
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
               {manglende.length === 0 ? (
@@ -299,10 +300,10 @@ export default function Fakturaer() {
               ) : manglende.map((m, i) => (
                 <div key={m.booking_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.kunde || 'Ukendt'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.kunde || 'Ukendt'}</div>
                     <div style={{ fontSize: 12.5, color: c.sub, marginTop: 2 }}>{m.enhed ? `${m.enhed} · ` : ''}{fmtDato(m.dato)}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, minWidth: 92, textAlign: 'right' }}>{kr(m.beloeb)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, minWidth: 92, textAlign: 'right' }}>{kr(m.beloeb)}</div>
                   <button style={{ ...btn, padding: '8px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => opret(m)}>
                     {busyId === `opret:${m.booking_id}` ? 'Opretter …' : 'Opret faktura'}
                   </button>
@@ -326,7 +327,7 @@ export default function Fakturaer() {
           {preview.loading && <div style={{ color: c.sub, fontSize: 14 }}>Henter fakturatekst …</div>}
 
           {preview.fejl && (
-            <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: 10, padding: '12px 14px', fontSize: 14, fontWeight: 600 }}>
+            <div style={{ background: '#F6E7E4', border: '1px solid #E0B6AF', color: '#8C3E36', borderRadius: 10, padding: '12px 14px', fontSize: 14, fontWeight: 500 }}>
               <div>{preview.fejl}</div>
               {preview.fejl.includes(MANGLER_VIRKSOMHED) && <VirksomhedLink />}
             </div>

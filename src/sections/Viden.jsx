@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
+import { tone } from '../ui.js'
 
 const fmtDato = (iso) => {
   if (!iso) return ''
@@ -9,9 +11,9 @@ const fmtDato = (iso) => {
 }
 
 const TYPE = {
-  tekst: { bg: '#F1F5F9', col: '#334155', txt: 'Tekst' },
+  tekst: { bg: '#F2F1ED', col: '#5B584F', txt: 'Tekst' },
   billede: { bg: '#F3E8FF', col: '#6B21A8', txt: 'Billede' },
-  dokument: { bg: '#FEF3C7', col: '#92400E', txt: 'Dokument' } }
+  dokument: { bg: '#F6EEDD', col: '#8A5F14', txt: 'Dokument' } }
 
 const erBillede = (v) => !!v?.fil_url && typeof v?.mime === 'string' && v.mime.startsWith('image/')
 
@@ -22,8 +24,7 @@ const saniter = (navn) => {
 }
 
 function TypeBadge({ type }) {
-  const t = TYPE[type] || { bg: '#F1F5F9', col: c.slate2, txt: type || '—' }
-  return <span style={{ background: t.bg, color: t.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{t.txt}</span>
+  return <StatusChip tekst={type || '—'} farve={tone.neutral} />
 }
 
 function TagChips({ tags }) {
@@ -31,7 +32,7 @@ function TagChips({ tags }) {
   return (
     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
       {tags.map((t, i) => (
-        <span key={`${t}-${i}`} style={{ background: '#EEF2F7', color: c.slate2, fontSize: 11.5, fontWeight: 600, padding: '2px 8px', borderRadius: 6 }}>{t}</span>
+        <span key={`${t}-${i}`} style={{ background: '#F2F1ED', color: c.slate2, fontSize: 11.5, fontWeight: 500, padding: '2px 8px', borderRadius: 6 }}>{t}</span>
       ))}
     </div>
   )
@@ -57,13 +58,13 @@ function Overlay({ lukVedBackdrop, onClose, width = 560, children }) {
 function ModalHead({ titel, onClose, disabled }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: c.ink, overflowWrap: 'anywhere' }}>{titel}</div>
+      <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, overflowWrap: 'anywhere' }}>{titel}</div>
       <button onClick={onClose} disabled={disabled} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1, padding: 0 }}>×</button>
     </div>
   )
 }
 
-const feltLabel = { fontSize: 11, fontWeight: 700, color: c.sub, marginBottom: 4 }
+const feltLabel = { fontSize: 11, fontWeight: 500, color: c.sub, marginBottom: 4 }
 
 // ---------- Formular (opret/rediger) ----------
 function VidenForm({ viden, onClose, onSaved }) {
@@ -174,7 +175,7 @@ function VidenForm({ viden, onClose, onSaved }) {
         <input key={filKey} type="file" onChange={(e) => vaelgFil(e.target.files?.[0] || null)} style={{ fontSize: 13, fontFamily: font }} />
         {fil && (
           <div style={{ fontSize: 13, color: c.slate2, marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-            Valgt: <span style={{ fontWeight: 600 }}>{fil.name}</span>
+            Valgt: <span style={{ fontWeight: 500 }}>{fil.name}</span>
             <button style={{ ...btnGhost, padding: '4px 10px', fontSize: 12 }} onClick={() => { setFil(null); setFilKey((k) => k + 1) }}>Fortryd</button>
           </div>
         )}
@@ -195,7 +196,7 @@ function VidenForm({ viden, onClose, onSaved }) {
       </div>
 
       {status && <div style={{ fontSize: 13, color: c.slate2 }}>{status}</div>}
-      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600 }}>{fejl}</div>}
+      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{fejl}</div>}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button style={{ ...btnGhost, opacity: busy ? 0.6 : 1 }} onClick={onClose} disabled={busy}>Annuller</button>
@@ -233,11 +234,11 @@ function VidenLaes({ viden, onClose }) {
 function SletDialog({ viden, busy, fejl, onBekraeft, onClose }) {
   return (
     <Overlay lukVedBackdrop={!busy} onClose={onClose} width={420}>
-      <div style={{ fontSize: 17, fontWeight: 800, color: c.ink }}>Slet viden?</div>
+      <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Slet viden?</div>
       <div style={{ fontSize: 14, color: c.sub }}>
         “{viden.titel}” slettes permanent. Enzo kan ikke længere slå den op. Handlingen kan ikke fortrydes.
       </div>
-      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600 }}>{fejl}</div>}
+      {fejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{fejl}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button style={{ ...btnGhost, opacity: busy ? 0.6 : 1 }} onClick={onClose} disabled={busy}>Annuller</button>
         <button style={{ ...btn, background: c.red, opacity: busy ? 0.6 : 1 }} onClick={onBekraeft} disabled={busy}>{busy ? 'Sletter …' : 'Slet'}</button>
@@ -255,7 +256,7 @@ function VidenKort({ viden, onLaes, onRediger, onSlet, laast }) {
           <TypeBadge type={viden.type} />
           {viden.oprettet && <span style={{ fontSize: 12, color: c.slate2 }}>{fmtDato(viden.oprettet)}</span>}
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: c.ink, marginTop: 10, overflowWrap: 'anywhere' }}>{viden.titel}</div>
+        <div style={{ fontSize: 16, fontWeight: 500, color: c.ink, marginTop: 10, overflowWrap: 'anywhere' }}>{viden.titel}</div>
         <TagChips tags={viden.tags} />
         {erBillede(viden) && (
           <img src={viden.fil_url} alt="" style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 10, border: `1px solid ${c.line}`, marginTop: 10 }} />

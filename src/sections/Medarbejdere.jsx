@@ -1,24 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, sp } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 const ONBOARD = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/medarbejder-onboard'
 
-// Rækkefølge: afventer → inviteret → aktiv. "inviteret" = invitation sendt, men
-// koden er ikke sat endnu → egen tilstand (blaa), ikke "aktiv" (groen).
-const STATUS_STIL = {
-  afventer_medarbejder: { bg: '#FEF3C7', col: '#92400E', txt: 'afventer' },
-  afventer_godkendelse: { bg: '#FEF3C7', col: '#92400E', txt: 'afventer godkendelse' },
-  inviteret: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'inviteret' },
-  aktiv: { bg: '#DCFCE7', col: '#166534', txt: 'aktiv' },
-  inaktiv: { bg: '#FEE2E2', col: '#991B1B', txt: 'inaktiv' },
-  afvist: { bg: '#FEE2E2', col: '#991B1B', txt: 'afvist' } }
-
-function Badge({ status, aktiv }) {
-  const key = status === 'aktiv' && !aktiv ? 'inaktiv' : status
-  const s = STATUS_STIL[key] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
-  return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
-}
 
 // Uden login endnu → kan inviteres.
 const kanInviteres = (status) => status === 'afventer_medarbejder' || status === 'afventer_godkendelse'
@@ -143,7 +129,7 @@ export default function Medarbejdere() {
       </div>
 
       {kvittering && (
-        <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <span>{kvittering}</span>
           <button onClick={() => setKvittering('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
         </div>
@@ -151,7 +137,7 @@ export default function Medarbejdere() {
 
       {showForm && (
         <div style={{ ...card, marginTop: 16, maxWidth: 460 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Ny medarbejder</div>
+          <div style={{ fontWeight: 500, marginBottom: 12 }}>Ny medarbejder</div>
           <input style={input} value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="Navn" />
           <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <input style={input} type="number" inputMode="decimal" value={loen} onChange={(e) => setLoen(e.target.value)} placeholder="Timeløn (kr.)" />
@@ -173,7 +159,7 @@ export default function Medarbejdere() {
           <div key={m.id} style={{ padding: '14px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 16, fontWeight: 500, color: c.ink }}>{m.navn}</div>
-              <Badge status={m.onboarding_status} aktiv={m.aktiv} />
+              <Badge status={m.onboarding_status} aktiv={m.aktiv} tekst={m.status_tekst} />
             </div>
             <div style={{ fontSize: 14, color: c.sub, marginTop: 4, overflowWrap: 'anywhere' }}>{m.email || '—'}</div>
             <div style={{ fontSize: 14, color: c.sub, marginTop: 2 }}>
@@ -199,10 +185,10 @@ export default function Medarbejdere() {
             <tbody>
               {liste.map((m) => (
                 <tr key={m.id} style={{ borderTop: `1px solid ${c.line}` }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600 }}>{m.navn}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 500 }}>{m.navn}</td>
                   <td style={{ padding: '12px 16px', color: c.sub }}>{m.email || '—'}</td>
                   <td style={{ padding: '12px 16px' }}>{m.timeloen != null ? m.timeloen + ' kr.' : '—'}</td>
-                  <td style={{ padding: '12px 16px' }}><Badge status={m.onboarding_status} aktiv={m.aktiv} /></td>
+                  <td style={{ padding: '12px 16px' }}><Badge status={m.onboarding_status} aktiv={m.aktiv} tekst={m.status_tekst} /></td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     {kanInviteres(m.onboarding_status) && (
                       <button style={{ ...btn, padding: '6px 12px', fontSize: 13 }} onClick={() => aabnInviter(m)}>Inviter</button>
@@ -217,7 +203,7 @@ export default function Medarbejdere() {
 
       <div style={{ marginTop: 24 }}>
         <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>Chat</div>
-        <div style={{ padding: '40px 24px', border: `1.5px dashed ${c.line}`, borderRadius: 14, textAlign: 'center', color: c.slate2, fontSize: 14 }}>
+        <div style={{ padding: '32px 24px', border: `1px dashed ${c.line}`, borderRadius: 12, textAlign: 'center', color: c.sub, fontSize: 15, background: c.card }}>
           Medarbejder-chat — bygges i en senere fase.
         </div>
       </div>
@@ -228,12 +214,12 @@ export default function Medarbejdere() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 60 }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: 420, maxWidth: '100%' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: c.ink }}>Inviter {inviter.navn}</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Inviter {inviter.navn}</div>
             <div style={{ fontSize: 13, color: c.sub, margin: '8px 0 14px' }}>
               Medarbejderen får et link til at sætte sin egen kode. Indtast den email invitationen skal sendes til.
             </div>
             <input style={input} type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="medarbejder@email.dk" disabled={invBusy} />
-            {invFejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 600, marginBottom: 10 }}>{invFejl}</div>}
+            {invFejl && <div style={{ fontSize: 13, color: c.red, fontWeight: 500, marginBottom: 10 }}>{invFejl}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button style={{ ...btnGhost, opacity: invBusy ? 0.6 : 1 }} onClick={() => setInviter(null)} disabled={invBusy}>Annuller</button>
               <button style={{ ...btn, opacity: invBusy ? 0.6 : 1 }} onClick={sendInvitation} disabled={invBusy}>{invBusy ? 'Sender …' : 'Send invitation'}</button>

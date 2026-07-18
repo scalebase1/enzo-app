@@ -32,7 +32,7 @@ function KPI({ label, value, sub, attention }) {
   return (
     <div style={card}>
       <div style={{ fontSize: 12, color: c.sub }}>{label}</div>
-      <div style={{ fontSize: 25, fontWeight: 800, marginTop: 6, color: attention ? c.amber : c.ink }}>{value}</div>
+      <div style={{ fontSize: 25, fontWeight: 500, marginTop: 6, color: attention ? c.amber : c.ink }}>{value}</div>
       {sub && <div style={{ fontSize: 12.5, color: c.slate2, marginTop: 4 }}>{sub}</div>}
     </div>
   )
@@ -40,14 +40,14 @@ function KPI({ label, value, sub, attention }) {
 
 function AttnBadge({ n }) {
   if (!n) return null
-  return <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>{n}</span>
+  return <span style={{ background: '#F6EEDD', color: '#8A5F14', fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>{n}</span>
 }
 
 function Kort({ titel, badge, children, style }) {
   return (
     <div style={{ ...card, ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2 }}>{titel}</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: c.slate2 }}>{titel}</div>
         <AttnBadge n={badge} />
       </div>
       {children}
@@ -77,9 +77,9 @@ function SoejleGraf({ data }) {
         const h = Math.max(3, Math.round(((d.v || 0) / max) * 150))
         return (
           <div key={d.m + i} title={kr(d.v)} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: 7, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: sidste ? c.blue : c.slate2 }}>{kompakt(d.v)}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: sidste ? c.blue : c.slate2 }}>{kompakt(d.v)}</div>
             <div style={{ width: '100%', maxWidth: 48, height: h, borderRadius: '6px 6px 0 0', background: sidste ? c.blue : '#BFDBFE' }} />
-            <div style={{ fontSize: 12, color: c.sub, fontWeight: sidste ? 700 : 500 }}>{MDR_DA[d.m] || d.m}</div>
+            <div style={{ fontSize: 12, color: c.sub, fontWeight: sidste ? 500 : 400 }}>{MDR_DA[d.m] || d.m}</div>
           </div>
         )
       })}
@@ -100,15 +100,15 @@ function HelbredBanner({ h }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
       {kritisk && (
-        <div style={{ ...card, background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }}>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>
+        <div style={{ ...card, background: '#F6E7E4', border: '1.5px solid #E0B6AF', color: '#8C3E36' }}>
+          <div style={{ fontWeight: 500, fontSize: 15 }}>
             ⚠️ Notifikationer sendes ikke — {tal(h.koe_antal)} beskeder har hængt i {tal(h.koe_aeldste_minutter)} min.
           </div>
         </div>
       )}
       {advarsler.length > 0 && (
-        <div style={{ ...card, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Kræver handling</div>
+        <div style={{ ...card, background: '#FBF6EA', border: '1px solid #E6D6AE', color: '#8A5F14' }}>
+          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 8 }}>Kræver handling</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
             {advarsler.map((a, i) => <li key={i}>{a}</li>)}
           </ul>
@@ -182,7 +182,7 @@ export default function Overblik() {
 
           {/* Omsætning pr. måned */}
           <div style={{ ...card, marginTop: sp(3) }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: c.slate2, marginBottom: 6 }}>Omsætning pr. måned</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: c.slate2, marginBottom: 6 }}>Omsætning pr. måned</div>
             <SoejleGraf data={graf} />
           </div>
 
@@ -191,7 +191,7 @@ export default function Overblik() {
             <Kort titel="Ventende Enzo-godkendelser" badge={godkend.length}>
               {godkend.length === 0 ? <Tom>Ingen ventende.</Tom> : godkend.map((g, i) => (
                 <Raekke key={g.id} top={i > 0}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{g.navn || 'Ukendt'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{g.navn || 'Ukendt'}</span>
                 </Raekke>
               ))}
             </Kort>
@@ -200,10 +200,10 @@ export default function Overblik() {
               {fakturaer.length === 0 ? <Tom>Ingen manglende fakturaer.</Tom> : fakturaer.map((f, i) => (
                 <Raekke key={f.id} top={i > 0}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.kunde || 'Ukendt'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.kunde || 'Ukendt'}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{fmtDato(f.dato)}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>{kr(f.beloeb)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap' }}>{kr(f.beloeb)}</div>
                 </Raekke>
               ))}
             </Kort>
@@ -212,9 +212,9 @@ export default function Overblik() {
               {vagter.length === 0 ? <Tom>Alle vagter dækket.</Tom> : vagter.map((v, i) => (
                 <Raekke key={v.id} top={i > 0}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.event || 'Ukendt'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.event || 'Ukendt'}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
-                      {v.koncept && <span style={{ fontWeight: 600 }}>{v.koncept}</span>}{v.koncept ? ' · ' : ''}{fmtDato(v.dato)}
+                      {v.koncept && <span style={{ fontWeight: 500 }}>{v.koncept}</span>}{v.koncept ? ' · ' : ''}{fmtDato(v.dato)}
                     </div>
                   </div>
                   {v.rolle && <span style={{ fontSize: 12, color: c.slate2, whiteSpace: 'nowrap' }}>{v.rolle}</span>}
@@ -230,10 +230,10 @@ export default function Overblik() {
                 <Raekke key={k.navn + i} top={i > 0}>
                   <span style={{ width: 10, height: 10, borderRadius: 5, background: k.farve || c.slate, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{k.navn}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{k.navn}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{tal(k.bookinger)} booking{k.bookinger === 1 ? '' : 'er'} · {tal(k.gaester)} gæst{k.gaester === 1 ? '' : 'er'}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>{kr(k.omsaetning)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap' }}>{kr(k.omsaetning)}</div>
                 </Raekke>
               ))}
             </Kort>

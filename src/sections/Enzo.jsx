@@ -1,16 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, monoFont, sp } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 export const PROXY = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/enzo-chat'
 
 function StatusBadge({ status }) {
-  let bg = '#E5E7EB', col = '#4B5563', txt = status || '—'
-  if (status === 'udfoert') { bg = '#DCFCE7'; col = '#166534'; txt = 'udført' }
-  else if (status === 'fejlet') { bg = '#FEE2E2'; col = '#991B1B'; txt = 'fejlet' }
-  else if (status === 'afvist') { bg = '#E5E7EB'; col = '#4B5563'; txt = 'afvist' }
-  else if (status === 'afventer') { bg = '#FEF3C7'; col = '#92400E'; txt = 'afventer' }
-  return <span style={{ background: bg, color: col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{txt}</span>
+  return <StatusChip status={status} />
 }
 
 function fejlTekst(resultat) {
@@ -256,7 +252,7 @@ export default function Enzo() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Enzo</h1>
         {ventende.length > 0 && (
-          <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 700, padding: '4px 11px', borderRadius: 20 }}>
+          <span style={{ background: '#F6EEDD', color: '#8A5F14', fontSize: 13, fontWeight: 500, padding: '4px 11px', borderRadius: 20 }}>
             {ventende.length} afventer
           </span>
         )}
@@ -272,10 +268,10 @@ export default function Enzo() {
               style={{
                 ...card,
                 marginTop: 16,
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: 14,
-                ...(kvittering.kind === 'ok' && { background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534' }),
-                ...(kvittering.kind === 'fejl' && { background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B' }),
+                ...(kvittering.kind === 'ok' && { background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349' }),
+                ...(kvittering.kind === 'fejl' && { background: '#F6E7E4', border: '1.5px solid #E0B6AF', color: '#8C3E36' }),
                 ...(kvittering.kind === 'neutral' && { color: c.slate2 }) }}
             >
               {kvittering.tekst}
@@ -294,10 +290,10 @@ export default function Enzo() {
               {ventende.map((f) => (
                 <div key={f.id} style={{ ...card, marginTop: 16, borderLeft: `4px solid ${c.blue}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <span style={{ fontFamily: monoFont, fontSize: 11, color: c.slate2, background: '#EEF2F7', padding: '2px 8px', borderRadius: 6 }}>{f.aktion}</span>
+                    <span style={{ fontFamily: monoFont, fontSize: 11, color: c.slate2, background: '#F2F1ED', padding: '2px 8px', borderRadius: 6 }}>{f.aktion}</span>
                     <span style={{ fontSize: 12, color: c.sub }}>{tidspunkt(f.oprettet)}</span>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{f.menneske_tekst}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500 }}>{f.menneske_tekst}</div>
                   {f.begrundelse && (
                     <div style={{ fontSize: 13, color: c.sub, marginTop: 6 }}>{f.begrundelse}</div>
                   )}
@@ -325,7 +321,7 @@ export default function Enzo() {
                   Besluttet (sidste 7 dage)
                 </div>
                 {besluttede.length === 0 && (
-                  <div style={{ padding: '20px 24px', border: `1.5px dashed ${c.line}`, borderRadius: 14, color: c.slate2, fontSize: 14 }}>
+                  <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15, background: c.card }}>
                     Ingen beslutninger endnu.
                   </div>
                 )}
@@ -334,7 +330,7 @@ export default function Enzo() {
                     {besluttede.map((f, i) => (
                       <div key={f.id} style={{ padding: '12px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', display: 'flex', alignItems: 'center', gap: sp(3) }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{f.menneske_tekst}</div>
+                          <div style={{ fontSize: 14, fontWeight: 500 }}>{f.menneske_tekst}</div>
                           <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{tidspunkt(f.oprettet)}</div>
                           {f.status === 'fejlet' && (
                             <div style={{ fontSize: 12, color: c.red, marginTop: 4 }}>Fejl: {fejlTekst(f.resultat)}</div>

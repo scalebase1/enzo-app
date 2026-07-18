@@ -12,7 +12,18 @@ const TONER = {
   aflyst: tone.fejl, afvist: tone.fejl, fejlet: tone.fejl, inaktiv: tone.fejl,
 }
 
-const laeseligt = (s) => String(s || '').replace(/_/g, ' ')
+// Faelles dansk gengivelse af de enum-vaerdier appen viser. Bruges KUN som
+// fallback: har RPC'en et 'status_tekst', vinder det altid.
+const LABEL = {
+  aaben: 'åben', bekraeftet: 'bekræftet', udfoert: 'udført',
+  klar_til_bekraeftelse: 'afventer', afventer_medarbejder: 'afventer',
+  afventer_godkendelse: 'afventer godkendelse',
+}
+
+const laeseligt = (s) => {
+  const n = String(s || '')
+  return LABEL[n] || n.replace(/_/g, ' ')
+}
 
 export default function StatusChip({ status, tekst, farve, style }) {
   const vis = tekst || laeseligt(status)

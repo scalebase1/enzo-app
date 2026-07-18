@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
 import BookingForm from '../components/BookingForm.jsx'
+import { StatusChip } from '../komponenter/index.jsx'
+import { tone } from '../ui.js'
 
 const MDR = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december']
 const UGEDAGE = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
@@ -23,9 +25,9 @@ const fmtKlokke = (t) => (typeof t === 'string' ? t.slice(0, 5).replace(':', '.'
 const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const TONE = {
-  blue: { background: '#E8F0FE', color: '#1E3A8A', border: c.blue },
-  green: { background: '#DCFCE7', color: '#166534', border: c.green },
-  slate: { background: '#F1F5F9', color: c.slate2, border: c.slate } }
+  blue: { background: '#EAEEE5', color: '#4B5A40', border: c.blue },
+  green: { background: '#E7EFE7', color: '#3B6349', border: c.green },
+  slate: { background: '#F2F1ED', color: c.slate2, border: c.slate } }
 
 // chip.tone kan vaere en TONE-noegle eller et farve-objekt (enheds-farver).
 const toneStil = (tone) => (tone && typeof tone === 'object' ? tone : (TONE[tone] || TONE.blue))
@@ -60,8 +62,8 @@ export function byggeEnhedFarver(enheder) {
 function InfoBoks({ tekst }) {
   if (!tekst) return null
   return (
-    <div style={{ marginTop: 14, padding: '10px 14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: '#92400E' }}>Info · logistik</div>
+    <div style={{ marginTop: 14, padding: '10px 14px', background: '#FBF6EA', border: '1px solid #E6D6AE', borderRadius: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#8A5F14' }}>Info · logistik</div>
       <div style={{ fontSize: 14, marginTop: 5, whiteSpace: 'pre-wrap', color: c.ink }}>{tekst}</div>
     </div>
   )
@@ -72,7 +74,7 @@ function EnhedInfoLinje({ enhed, info }) {
   if (!enhed && !info) return null
   return (
     <div style={{ fontSize: 12.5, marginTop: 3, overflowWrap: 'break-word' }}>
-      {enhed && <span style={{ fontWeight: 700 }}>{enhed}</span>}
+      {enhed && <span style={{ fontWeight: 500 }}>{enhed}</span>}
       {enhed && info && <span style={{ color: c.sub }}> · </span>}
       {info && <span style={{ color: c.sub }}>{info}</span>}
     </div>
@@ -91,11 +93,7 @@ const flereKoncepter = (b) => konceptListe(b).length > 1
 
 // Lille neutralt koncept-tag til modalens fulde saet.
 function KonceptTag({ navn }) {
-  return (
-    <span style={{ background: '#F1F5F9', color: c.slate2, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      {navn}
-    </span>
-  )
+  return <StatusChip tekst={navn} farve={tone.neutral} />
 }
 
 // ---- Genbrugelig maaneds-grid (controlled cursor). events: normaliserede
@@ -125,7 +123,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
         <button style={btnGhost} onClick={() => skift(-1)} aria-label="Forrige måned">‹</button>
-        <div style={{ fontSize: 18, fontWeight: 700, minWidth: 190, textTransform: 'capitalize' }}>
+        <div style={{ fontSize: 18, fontWeight: 500, minWidth: 190, textTransform: 'capitalize' }}>
           {MDR[cursor.getMonth()]} {cursor.getFullYear()}
         </div>
         <button style={btnGhost} onClick={() => skift(1)} aria-label="Næste måned">›</button>
@@ -137,7 +135,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {UGEDAGE.map((u) => (
-            <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 700, color: c.sub, textAlign: 'center', borderBottom: `1px solid ${c.line}` }}>
+            <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 500, color: c.sub, textAlign: 'center', borderBottom: `1px solid ${c.line}` }}>
               {u}
             </div>
           ))}
@@ -165,7 +163,7 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                     style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11,
-                      fontSize: 12.5, fontWeight: erIdag ? 800 : 500,
+                      fontSize: 12.5, fontWeight: erIdag ? 500 : 400,
                       color: erIdag ? '#fff' : (inMonth ? c.text : c.slate),
                       background: erIdag ? c.blue : 'transparent' }}
                   >
@@ -187,11 +185,11 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
                         textDecoration: e.chip.struck ? 'line-through' : 'none' }}
                     >
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {e.chip.tid && <span style={{ fontWeight: 700 }}>{e.chip.tid} </span>}
+                        {e.chip.tid && <span style={{ fontWeight: 500 }}>{e.chip.tid} </span>}
                         {e.chip.label}
                       </span>
                       {e.chip.koncepter && (
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, fontWeight: 600, opacity: 0.85 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, fontWeight: 500, opacity: 0.85 }}>
                           {e.chip.koncepter.join(', ')}
                         </span>
                       )}
@@ -238,7 +236,7 @@ function Modal({ children, onClose }) {
 function ModalHead({ titel, struck, onClose }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: c.ink, textDecoration: struck ? 'line-through' : 'none' }}>{titel}</div>
+      <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, textDecoration: struck ? 'line-through' : 'none' }}>{titel}</div>
       <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: 'pointer', padding: 0 }}>×</button>
     </div>
   )
@@ -246,28 +244,19 @@ function ModalHead({ titel, struck, onClose }) {
 
 // ---------------- Admin ----------------
 
-function BookingBadge({ status, aflyst }) {
-  let bg = '#E5E7EB', col = '#4B5563', txt = status || '—'
-  if (aflyst) { bg = '#FEE2E2'; col = '#991B1B'; txt = 'aflyst' }
-  else if (status === 'bekraeftet' || status === 'lukket') { bg = '#DCFCE7'; col = '#166534' }
-  else if (status === 'klar_til_bekraeftelse') { bg = '#FEF3C7'; col = '#92400E' }
-  return <span style={{ background: bg, color: col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{txt}</span>
+function BookingBadge({ status, aflyst, tekst }) {
+  return aflyst
+    ? <StatusChip status="aflyst" tekst="aflyst" />
+    : <StatusChip status={status} tekst={tekst} />
 }
 
 const DAEKNING = {
-  fuldt_bemandet: { bg: '#DCFCE7', border: '#86EFAC', col: '#166534', tekst: 'Fuldt bemandet — ingen åbne vagter.' },
-  vagter_aabnet: { bg: '#E8F0FE', border: '#93C5FD', col: '#1E3A8A', tekst: 'Vagter åbnet — alle nødvendige vagter er oprettet.' },
-  delvis: { bg: '#FEF3C7', border: '#FCD34D', col: '#92400E', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' } }
+  fuldt_bemandet: { bg: '#E7EFE7', border: '#BFD3C1', col: '#3B6349', tekst: 'Fuldt bemandet — ingen åbne vagter.' },
+  vagter_aabnet: { bg: '#EAEEE5', border: '#93C5FD', col: '#4B5A40', tekst: 'Vagter åbnet — alle nødvendige vagter er oprettet.' },
+  delvis: { bg: '#F6EEDD', border: '#FCD34D', col: '#8A5F14', tekst: 'Delvis — der mangler stadig bemanding ift. behovet.' } }
 
 function ShiftBadge({ status }) {
-  const map = {
-    aaben: { bg: '#FEF3C7', col: '#92400E', txt: 'åben' },
-    tildelt: { bg: '#E8F0FE', col: '#1E3A8A', txt: 'tildelt' },
-    bekraeftet: { bg: '#DCFCE7', col: '#166534', txt: 'bekræftet' },
-    byttet: { bg: '#F1F5F9', col: '#4B5563', txt: 'byttet' },
-    aflyst: { bg: '#FEE2E2', col: '#991B1B', txt: 'aflyst' } }
-  const s = map[status] || { bg: '#E5E7EB', col: '#4B5563', txt: status || '—' }
-  return <span style={{ background: s.bg, color: s.col, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{s.txt}</span>
+  return <StatusChip status={status} />
 }
 
 export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onRediger }) {
@@ -345,16 +334,16 @@ export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onR
     onVagtChange?.()
   }
 
-  const d = bemRes ? (DAEKNING[bemRes.daekning] || { bg: '#F1F5F9', border: c.line, col: c.text, tekst: bemRes.daekning }) : null
+  const d = bemRes ? (DAEKNING[bemRes.daekning] || { bg: '#F2F1ED', border: c.line, col: c.text, tekst: bemRes.daekning }) : null
   const selectStil = { ...input, marginBottom: 0, padding: '8px 10px', flex: 1, minWidth: 0 }
 
   return (
     <Modal onClose={onClose}>
       <ModalHead titel={renTitel(booking.titel)} struck={booking.aflyst} onClose={onClose} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-        <BookingBadge status={booking.status} aflyst={booking.aflyst} />
+        <BookingBadge status={booking.status} aflyst={booking.aflyst} tekst={booking.status_tekst} />
         {booking.enhed && (
-          <span style={{ background: (enhedFarve || UDEN_ENHED_FARVE).background, color: (enhedFarve || UDEN_ENHED_FARVE).color, border: `1px solid ${(enhedFarve || UDEN_ENHED_FARVE).border}`, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+          <span style={{ background: (enhedFarve || UDEN_ENHED_FARVE).background, color: (enhedFarve || UDEN_ENHED_FARVE).color, border: `1px solid ${(enhedFarve || UDEN_ENHED_FARVE).border}`, fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
             {booking.enhed}{booking.enhed_type ? ` · ${booking.enhed_type}` : ''}
           </span>
         )}
@@ -374,11 +363,11 @@ export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onR
       </div>
       {behov && behov.staff_required != null && (
         <div style={{ marginTop: 10, fontSize: 14 }}>
-          <span style={{ color: c.sub }}>Medarbejdere:</span> <span style={{ fontWeight: 700 }}>{behov.staff_required}</span> <span style={{ color: c.slate2, fontSize: 12.5 }}>(behov — se “Personale” nedenfor for tildelte)</span>
+          <span style={{ color: c.sub }}>Medarbejdere:</span> <span style={{ fontWeight: 500 }}>{behov.staff_required}</span> <span style={{ color: c.slate2, fontSize: 12.5 }}>(behov — se “Personale” nedenfor for tildelte)</span>
         </div>
       )}
       {booking.aflyst && (
-        <div style={{ marginTop: 12, padding: '8px 12px', background: '#FEE2E2', color: '#991B1B', borderRadius: 9, fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginTop: 12, padding: '8px 12px', background: '#F6E7E4', color: '#8C3E36', borderRadius: 9, fontSize: 13, fontWeight: 500 }}>
           Denne booking er aflyst.
         </div>
       )}
@@ -390,7 +379,7 @@ export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onR
             return (
               <div key={i} style={{ fontSize: 14 }}>
                 <span style={{ color: c.sub }}>{l.slice(0, sep)}:</span>
-                <span style={{ fontWeight: 600 }}> {l.slice(sep + 1).trim()}</span>
+                <span style={{ fontWeight: 500 }}> {l.slice(sep + 1).trim()}</span>
               </div>
             )
           }
@@ -406,7 +395,7 @@ export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onR
           {bemFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red }}>{bemFejl}</div>}
           {d && (
             <div style={{ marginTop: 12, padding: '12px 14px', background: d.bg, border: `1px solid ${d.border}`, color: d.col, borderRadius: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{d.tekst}</div>
+              <div style={{ fontWeight: 500, fontSize: 14 }}>{d.tekst}</div>
               <div style={{ marginTop: 6, fontSize: 13 }}>
                 {bemRes.vagter_oprettet} {bemRes.vagter_oprettet === 1 ? 'vagt' : 'vagter'} åbnet · {bemRes.medarbejdere_notificeret} medarbejder{bemRes.medarbejdere_notificeret === 1 ? '' : 'e'} notificeret
               </div>
@@ -450,7 +439,7 @@ export function BookingDetalje({ booking, enhedFarve, onClose, onVagtChange, onR
           return (
             <div key={v.shift_id} style={rowStil}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{v.staff_navn || 'Ukendt'}</span>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{v.staff_navn || 'Ukendt'}</span>
               </div>
               <ShiftBadge status={v.status} />
               {kanStyres && (
@@ -549,7 +538,7 @@ function IndkoebSektion({ bookingId }) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <div style={SEKTION_TITEL}>Indkøbsliste</div>
         {items.length > 0 && (
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: koebte === items.length ? c.green : c.slate2 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: koebte === items.length ? c.green : c.slate2 }}>
             {koebte} af {items.length} varer købt
           </div>
         )}
@@ -575,7 +564,7 @@ function IndkoebSektion({ bookingId }) {
           ) : (
             <>
               {note && (
-                <div style={{ marginBottom: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+                <div style={{ marginBottom: 10, padding: '8px 12px', background: '#F6EEDD', color: '#8A5F14', borderRadius: 9, fontSize: 13 }}>
                   {note}
                 </div>
               )}
@@ -625,7 +614,7 @@ function IndkoebSektion({ bookingId }) {
           )}
 
           {handlingFejl && <div style={{ marginTop: 10, fontSize: 13, color: c.red, whiteSpace: 'pre-wrap' }}>{handlingFejl}</div>}
-          {kvittering && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 700, color: c.green }}>{kvittering}</div>}
+          {kvittering && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 500, color: c.green }}>{kvittering}</div>}
           {opdateret && !kvittering && (
             <div style={{ marginTop: 8, fontSize: 11.5, color: c.sub }}>
               Sidst gemt {new Date(opdateret).toLocaleString('da-DK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{godkendt ? ' · godkendt' : ''}
@@ -706,20 +695,20 @@ function OekonomiSektion({ bookingId }) {
         <>
           <div style={linjeStil}>
             <span style={{ color: c.sub }}>Pris (ex moms)</span>
-            <span style={{ fontWeight: 600 }}>{fmtKr(data.pris_ex_moms)}</span>
+            <span style={{ fontWeight: 500 }}>{fmtKr(data.pris_ex_moms)}</span>
           </div>
           <div style={linjeStil}>
             <span style={{ color: c.sub }}>− Løn</span>
-            <span style={{ fontWeight: 600 }}>{fmtKr(data.loenomkostning)}</span>
+            <span style={{ fontWeight: 500 }}>{fmtKr(data.loenomkostning)}</span>
           </div>
           <div style={linjeStil}>
             <span style={{ color: c.sub }}>− Vareomkostning</span>
-            <span style={{ fontWeight: 600 }}>{fmtKr(data.vareomkostning)}</span>
+            <span style={{ fontWeight: 500 }}>{fmtKr(data.vareomkostning)}</span>
           </div>
           <div style={{ ...linjeStil, borderTop: `1px solid ${c.line}`, marginTop: 4, paddingTop: 8 }}>
-            <span style={{ fontWeight: 700 }}>= Dækningsbidrag</span>
+            <span style={{ fontWeight: 500 }}>= Dækningsbidrag</span>
             <span style={{ textAlign: 'right' }}>
-              <span style={{ fontWeight: 800, color: dbKlar && data.daekningsbidrag < 0 ? c.red : c.ink }}>
+              <span style={{ fontWeight: 500, color: dbKlar && data.daekningsbidrag < 0 ? c.red : c.ink }}>
                 {fmtKr(data.daekningsbidrag)}
               </span>
               {dbKlar && (data.daekningsgrad_pct != null || data.db_pr_gaest != null) && (
@@ -732,12 +721,12 @@ function OekonomiSektion({ bookingId }) {
 
           {/* Systemets aerlige besked naar tallet ikke er fuldt endnu — aldrig et falsk 0. */}
           {data.note && (
-            <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#F6EEDD', color: '#8A5F14', borderRadius: 9, fontSize: 13 }}>
               {data.note}
             </div>
           )}
           {!data.note && mangler.length > 0 && (
-            <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF3C7', color: '#92400E', borderRadius: 9, fontSize: 13 }}>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#F6EEDD', color: '#8A5F14', borderRadius: 9, fontSize: 13 }}>
               Mangler: {mangler.join(', ')} — dækningsbidraget kan ikke beregnes endnu.
             </div>
           )}
@@ -769,7 +758,7 @@ function FilterPill({ aktiv, onClick, tekst, farve }) {
         border: `1.5px solid ${aktiv ? (farve ? farve.border : c.ink) : c.line}`,
         background: aktiv ? (farve ? farve.background : c.ink) : c.card,
         color: aktiv ? (farve ? farve.color : '#fff') : c.slate2,
-        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font,
+        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: font,
         display: 'inline-flex', alignItems: 'center', gap: 7 }}
     >
       {farve && <span style={{ width: 9, height: 9, borderRadius: 5, background: farve.border }} />}
@@ -862,7 +851,7 @@ function AdminKalender() {
       <p style={{ color: c.sub, margin: '6px 0 0' }}>Overblik over bookinger. Klik en booking for detaljer — eller opret en ny.</p>
 
       {enhedFejl && (
-        <div style={{ ...card, marginTop: 14, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ ...card, marginTop: 14, background: '#FBF6EA', border: '1px solid #E6D6AE', color: '#8A5F14', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ flex: 1 }}>{enhedFejl}</span>
           <button style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }} onClick={hentEnheder}>Prøv igen</button>
         </div>
@@ -878,7 +867,7 @@ function AdminKalender() {
       )}
 
       {gemt && (
-        <div style={{ ...card, marginTop: 16, background: '#DCFCE7', border: '1px solid #86EFAC', color: '#166534', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <span>
             Booking gemt ✓
             {gemt.mangler.length > 0 && ` — mangler stadig: ${gemt.mangler.map((m) => MANGLER_DA[m] || m).join(', ')}`}
@@ -927,12 +916,7 @@ function AdminKalender() {
 // ---------------- Medarbejder ----------------
 
 function VagtBadge({ status }) {
-  const bekr = status === 'bekraeftet'
-  return (
-    <span style={{ background: bekr ? '#DCFCE7' : '#E8F0FE', color: bekr ? '#166534' : '#1E3A8A', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
-      {bekr ? 'bekræftet' : 'tildelt'}
-    </span>
-  )
+  return <StatusChip status={status} />
 }
 
 function VagtDetalje({ vagt, onClose }) {
@@ -946,10 +930,10 @@ function VagtDetalje({ vagt, onClose }) {
         {harTid(d) && <><br /><span style={{ color: c.sub }}>kl. {fmtTid(d)}</span></>}
       </div>
       <div style={{ marginTop: 16, borderTop: `1px solid ${c.line}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {vagt.enhed && <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Enhed:</span><span style={{ fontWeight: 600 }}> {vagt.enhed}{vagt.enhed_type ? ` (${vagt.enhed_type})` : ''}</span></div>}
-        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Koncept:</span><span style={{ fontWeight: 600 }}> {vagt.koncept}</span></div>
-        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Kuverter:</span><span style={{ fontWeight: 600 }}> {vagt.covers}</span></div>
-        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Status:</span><span style={{ fontWeight: 600 }}> {vagt.status === 'bekraeftet' ? 'bekræftet' : 'tildelt'}</span></div>
+        {vagt.enhed && <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Enhed:</span><span style={{ fontWeight: 500 }}> {vagt.enhed}{vagt.enhed_type ? ` (${vagt.enhed_type})` : ''}</span></div>}
+        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Koncept:</span><span style={{ fontWeight: 500 }}> {vagt.koncept}</span></div>
+        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Kuverter:</span><span style={{ fontWeight: 500 }}> {vagt.covers}</span></div>
+        <div style={{ fontSize: 14 }}><span style={{ color: c.sub }}>Status:</span><span style={{ fontWeight: 500 }}> {vagt.status === 'bekraeftet' ? 'bekræftet' : 'tildelt'}</span></div>
       </div>
       <InfoBoks tekst={vagt.info} />
     </Modal>
@@ -1074,7 +1058,7 @@ function MedarbejderKalender() {
               {aabne.map((v) => (
                 <div key={v.shift_id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}`, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v.koncept}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{v.koncept}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
                     <EnhedInfoLinje enhed={v.enhed} info={v.info} />
                   </div>
@@ -1097,7 +1081,7 @@ function MedarbejderKalender() {
               {vagter.map((v) => (
                 <div key={v.shift_id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v.koncept}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{v.koncept}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(v.dato))}</div>
                     <EnhedInfoLinje enhed={v.enhed} info={v.info} />
                   </div>
@@ -1126,7 +1110,7 @@ function MedarbejderKalender() {
               <div style={{ fontSize: 12, color: c.sub, marginBottom: 8 }}>Min ledighed</div>
               <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: 14 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Meld dig ledig</div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 10 }}>Meld dig ledig</div>
                   <input type="date" style={input} value={dato} onChange={(e) => setDato(e.target.value)} />
                   <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
                     <div style={{ flex: 1, fontSize: 11, color: c.sub }}>Fra (valgfri)</div>
@@ -1152,7 +1136,7 @@ function MedarbejderKalender() {
                     <div key={l.id} style={{ padding: '12px 16px', borderTop: `1px solid ${c.line}`, display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(l.dato))}</div>
+                          <div style={{ fontSize: 14, fontWeight: 500, textTransform: 'capitalize' }}>{fmtDatoKort(new Date(l.dato))}</div>
                           {interval && <div style={{ fontSize: 13, color: c.slate2 }}>{interval}</div>}
                         </div>
                         {l.note && <div style={{ fontSize: 13, color: c.sub, marginTop: 3 }}>{l.note}</div>}
