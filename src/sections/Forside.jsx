@@ -159,7 +159,14 @@ function SpoergEnzo() {
 }
 
 // hub_indbakke-poster -> hvor foerer de hen. 'lead_*' har ingen sektion i appen.
-const HUB_MAAL = { kladde: '/kladder', booking_ny: '/kalender' }
+// Leads har nu en destination (hub'ens henvendelses-fane) — de var uklikbare
+// indtil Kundekontakt fandtes.
+const HUB_MAAL = {
+  kladde: '/kundekontakt?fane=kladder',
+  lead_ny: '/kundekontakt?fane=henvendelser',
+  lead_kold: '/kundekontakt?fane=henvendelser',
+  booking_ny: '/kalender',
+}
 
 function FraEnzo() {
   const nav = useNavigate()

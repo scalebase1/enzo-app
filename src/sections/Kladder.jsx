@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
@@ -27,19 +27,6 @@ function StatusBadge({ status }) {
   return <StatusChip status={status} tekst={sendt ? 'Sendt' : 'Afventer dig'} farve={sendt ? tone.ok : tone.advarsel} />
 }
 
-function FilterPill({ aktiv, onClick, tekst, antal }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        border: `1.5px solid ${aktiv ? c.ink : c.line}`, background: aktiv ? c.ink : c.card, color: aktiv ? '#fff' : c.slate2,
-        borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: font,
-        display: 'inline-flex', alignItems: 'center', gap: 7 }}
-    >
-      {tekst}<span style={{ fontSize: 12, fontWeight: 500, color: aktiv ? '#fff' : c.slate, opacity: aktiv ? 0.85 : 1 }}>{antal}</span>
-    </button>
-  )
-}
 
 function Overlay({ lukVedBackdrop, onClose, width = 620, children }) {
   const ned = useRef(false)
@@ -58,7 +45,7 @@ function Overlay({ lukVedBackdrop, onClose, width = 620, children }) {
 const feltLabel = { fontSize: 11, fontWeight: 500, color: c.sub, marginBottom: 4 }
 
 // Læse-visning (sendt) — backdrop lukker gerne, ingen redigering.
-function SendtVisning({ kladde, onClose }) {
+export function SendtVisning({ kladde, onClose }) {
   return (
     <Overlay lukVedBackdrop onClose={onClose}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -80,7 +67,7 @@ function SendtVisning({ kladde, onClose }) {
 }
 
 // Redigér + send (klar) — backdrop lukker IKKE (datatab).
-function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
+export function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
   const [emne, setEmne] = useState(kladde.emne || '')
   const [modtager, setModtager] = useState(kladde.modtager || '')
   const [besked, setBesked] = useState(kladde.besked || '')
@@ -200,7 +187,7 @@ function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
   )
 }
 
-function KladdeKort({ kladde, onClick }) {
+export function KladdeKort({ kladde, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -217,88 +204,12 @@ function KladdeKort({ kladde, onClick }) {
       {kladde.besked && (
         <div style={{ fontSize: 13, color: c.slate2, marginTop: 8, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{kladde.besked}</div>
       )}
-      <div style={{ marginTop: 12 }}><TypeBadge type={kladde.type} /></div>
-    </button>
-  )
-}
-
-export default function Kladder() {
-  const [liste, setListe] = useState(null)
-  const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('alle') // 'alle' | 'klar' | 'sendt'
-  const [valgt, setValgt] = useState(null)
-  const [kvittering, setKvittering] = useState(null)
-
-  const load = useCallback(async () => {
-    setErr('')
-    const { data, error } = await supabase.rpc('kladde_liste')
-    setLoading(false)
-    if (error) { setErr(error.message); return }
-    if (!data || data.ok === false) { setErr(data?.fejl || 'Kunne ikke hente kladder.'); return }
-    setListe(data.kladder || [])
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const antal = useMemo(() => {
-    const a = { alle: (liste || []).length, klar: 0, sendt: 0 }
-    for (const k of liste || []) if (a[k.status] != null) a[k.status]++
-    return a
-  }, [liste])
-
-  const synlige = filter === 'alle' ? (liste || []) : (liste || []).filter((k) => k.status === filter)
-
-  function fuldfoert(tekst) {
-    setValgt(null)
-    setKvittering(tekst)
-    load()
-  }
-
-  const total = liste?.length ?? 0
-
-  return (
-    <div style={{ fontFamily: font }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>Kladder</h1>
-        {liste && <span style={{ color: c.sub, fontSize: 14 }}>{total} kladde{total === 1 ? '' : 'r'}{antal.klar > 0 ? ` · ${antal.klar} afventer dig` : ''}</span>}
-      </div>
-      <p style={{ color: c.sub, margin: '6px 0 0' }}>Enzo skriver udkast til kundemails. Du læser dem igennem, retter hvis nødvendigt, og sender — direkte herfra.</p>
-
-      {kvittering && (
-        <div style={{ ...card, marginTop: 16, background: '#E7EFE7', border: '1px solid #BFD3C1', color: '#3B6349', fontWeight: 500, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-          <span>{kvittering}</span>
-          <button onClick={() => setKvittering(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
+      {kladde.lead && (
+        <div style={{ fontSize: 12.5, color: c.sub, marginTop: 8 }}>
+          Svar til {kladde.lead.navn}
         </div>
       )}
-
-      {loading && <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter kladder …</div>}
-      {err && <div style={{ ...card, marginTop: 16, color: c.red }}>RPC-fejl: {err}</div>}
-
-      {!loading && !err && liste && (
-        <>
-          {total > 0 && (
-            <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}>
-              <FilterPill aktiv={filter === 'alle'} onClick={() => setFilter('alle')} tekst="Alle" antal={antal.alle} />
-              <FilterPill aktiv={filter === 'klar'} onClick={() => setFilter('klar')} tekst="Klar" antal={antal.klar} />
-              <FilterPill aktiv={filter === 'sendt'} onClick={() => setFilter('sendt')} tekst="Sendt" antal={antal.sendt} />
-            </div>
-          )}
-
-          {total === 0 ? (
-            <div style={{ ...card, marginTop: 16, color: c.sub }}>Ingen kladder endnu.</div>
-          ) : synlige.length === 0 ? (
-            <div style={{ ...card, marginTop: 16, color: c.sub }}>Ingen {filter === 'klar' ? 'kladder afventer dig' : 'sendte kladder'}.</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-              {synlige.map((k) => <KladdeKort key={k.id} kladde={k} onClick={() => { setKvittering(null); setValgt(k) }} />)}
-            </div>
-          )}
-        </>
-      )}
-
-      {valgt && valgt.status === 'sendt' && <SendtVisning kladde={valgt} onClose={() => setValgt(null)} />}
-      {valgt && valgt.status !== 'sendt' && <KladdeRediger kladde={valgt} onClose={() => setValgt(null)} onDone={fuldfoert} onRefresh={load} />}
-    </div>
+      <div style={{ marginTop: 12 }}><TypeBadge type={kladde.type} /></div>
+    </button>
   )
 }
