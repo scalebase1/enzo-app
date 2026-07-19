@@ -529,7 +529,7 @@ function BeskederUI({ erAdmin }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Beskeder</h1>
+        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Personalebeskeder</h1>
         {erAdmin && <button onClick={() => { setNyAaben(true); setKvittering('') }} style={btn}>Ny besked</button>}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>
@@ -573,7 +573,7 @@ export default function Beskeder() {
   if (rolleFejl) {
     return (
       <div>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Beskeder</h1>
+        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Personalebeskeder</h1>
         <div style={{ ...card, marginTop: 16, color: c.red }}>Fejl: {rolleFejl}</div>
       </div>
     )
@@ -581,7 +581,7 @@ export default function Beskeder() {
   if (rolle === undefined) {
     return (
       <div>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Beskeder</h1>
+        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Personalebeskeder</h1>
         <div style={{ ...card, marginTop: 16, color: c.sub }}>Henter beskeder …</div>
       </div>
     )
