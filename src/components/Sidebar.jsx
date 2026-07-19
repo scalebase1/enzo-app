@@ -9,32 +9,97 @@ import { useSmalSkaerm } from '../komponenter/useSmalSkaerm.js'
 // indholdet HELE bredden, hvilket var det egentlige problem paa telefon.
 export const MOBIL_TOPBAR_HOEJDE = 56
 
-function Menupunkter({ sections, onNavigeret }) {
+function Punkt({ s, onNavigeret }) {
   return (
-    <nav style={{ flex: 1, padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-      {sections.map((s) => (
-        <NavLink
-          key={s.key}
-          to={'/' + s.key}
-          onClick={onNavigeret}
-          style={({ isActive }) => ({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 11,
-            padding: '11px 12px',
-            minHeight: TOUCH,
-            boxSizing: 'border-box',
-            borderRadius: 10,
-            color: isActive ? '#fff' : c.slate,
-            background: isActive ? c.accent : 'transparent',
-            textDecoration: 'none',
-            fontSize: 15,
-            fontWeight: isActive ? 500 : 400 })}
-        >
-          <span style={{ width: 18, textAlign: 'center', fontSize: 15 }}>{s.icon}</span>
-          {s.label}
-        </NavLink>
-      ))}
+    <NavLink
+      key={s.key}
+      to={'/' + s.key}
+      onClick={onNavigeret}
+      style={({ isActive }) => ({
+        display: 'flex',
+        alignItems: 'center',
+        gap: 11,
+        padding: '10px 12px',
+        minHeight: TOUCH,
+        boxSizing: 'border-box',
+        borderRadius: 10,
+        color: isActive ? '#fff' : c.slate,
+        background: isActive ? c.accent : 'transparent',
+        textDecoration: 'none',
+        fontSize: 15,
+        fontWeight: isActive ? 500 : 400 })}
+    >
+      <span style={{ width: 18, textAlign: 'center', fontSize: 15 }}>{s.icon}</span>
+      {s.label}
+    </NavLink>
+  )
+}
+
+const gruppeTitel = {
+  fontSize: 12,
+  color: c.slate,
+  opacity: 0.75,
+  padding: '14px 12px 4px',
+  letterSpacing: '.02em',
+}
+
+// Femten flade punkter er svaere at overskue. Punkterne grupperes derfor
+// efter hvornaar de bruges: Hverdag / Personale / Forretning, med de
+// sjaeldne indstillinger klappet sammen nederst og Enzo for sig selv.
+// Medarbejdere ser kun faa punkter og faar ingen grupper.
+function Menupunkter({ sections, grupper, onNavigeret }) {
+  const [indstAaben, setIndstAaben] = useState(false)
+  const iGruppe = (g) => sections.filter((s) => s.gruppe === g)
+  const indstillinger = iGruppe('indstillinger')
+  const alene = sections.filter((s) => s.gruppe == null)
+  const grupperet = grupper.some((g) => iGruppe(g.key).length > 0) && sections.length > 6
+
+  const nav = { flex: 1, padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }
+
+  if (!grupperet) {
+    return <nav style={nav}>{sections.map((s) => <Punkt key={s.key} s={s} onNavigeret={onNavigeret} />)}</nav>
+  }
+
+  return (
+    <nav style={nav}>
+      {grupper.map((g) => {
+        const punkter = iGruppe(g.key)
+        if (punkter.length === 0) return null
+        return (
+          <div key={g.key}>
+            <div style={gruppeTitel}>{g.titel}</div>
+            {punkter.map((s) => <Punkt key={s.key} s={s} onNavigeret={onNavigeret} />)}
+          </div>
+        )
+      })}
+
+      {alene.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          {alene.map((s) => <Punkt key={s.key} s={s} onNavigeret={onNavigeret} />)}
+        </div>
+      )}
+
+      {indstillinger.length > 0 && (
+        <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+          <button
+            onClick={() => setIndstAaben((v) => !v)}
+            aria-expanded={indstAaben}
+            style={{
+              width: '100%', minHeight: TOUCH, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', gap: 8, padding: '10px 12px',
+              border: 'none', background: 'transparent', color: c.slate,
+              fontSize: 15, fontFamily: font, cursor: 'pointer', borderRadius: 10,
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+              <span style={{ width: 18, textAlign: 'center', fontSize: 15 }}>⚙</span>
+              Indstillinger
+            </span>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>{indstAaben ? '▾' : '▸'}</span>
+          </button>
+          {indstAaben && indstillinger.map((s) => <Punkt key={s.key} s={s} onNavigeret={onNavigeret} />)}
+        </div>
+      )}
     </nav>
   )
 }
@@ -68,7 +133,7 @@ function Maerke() {
   )
 }
 
-export default function Sidebar({ sections, userEmail, role, onLogout }) {
+export default function Sidebar({ sections, grupper = [], userEmail, role, onLogout }) {
   const smal = useSmalSkaerm()
   const [aaben, setAaben] = useState(false)
   const sti = useLocation().pathname
@@ -95,7 +160,7 @@ export default function Sidebar({ sections, userEmail, role, onLogout }) {
   if (!smal) {
     return <aside style={{ ...panel, width: 240, flexShrink: 0 }}>
       <Maerke />
-      <Menupunkter sections={sections} />
+      <Menupunkter sections={sections} grupper={grupper} />
       <Bund role={role} userEmail={userEmail} onLogout={onLogout} />
     </aside>
   }
@@ -152,7 +217,7 @@ export default function Sidebar({ sections, userEmail, role, onLogout }) {
                 ×
               </button>
             </div>
-            <Menupunkter sections={sections} onNavigeret={() => setAaben(false)} />
+            <Menupunkter sections={sections} grupper={grupper} onNavigeret={() => setAaben(false)} />
             <Bund role={role} userEmail={userEmail} onLogout={onLogout} />
           </div>
         </div>

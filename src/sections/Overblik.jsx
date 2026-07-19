@@ -44,7 +44,8 @@ function AttnBadge({ n }) {
 }
 
 // audit_log gemmer tekniske handlingsnavne (kladde_slet, admin_handling:vagt_tildel …).
-// Backend har endnu ingen handling_tekst() — indtil da oversaetter vi her.
+// Backend leverer nu handling_tekst(). Tabellen her staar som fallback,
+// hvis en aeldre post skulle mangle feltet.
 // Praefikset (admin_handling:/medarbejder_handling:) er stoej og fjernes foerst.
 const HANDLING_TEKST = {
   booking_opret: 'Booking oprettet', booking_opdater: 'Booking opdateret',
@@ -175,9 +176,6 @@ export default function Overblik() {
   }, [])
 
   const n = data?.noegletal || {}
-  const godkend = data?.afventer_godkendelse_liste || []
-  const fakturaer = data?.manglende_fakturaer_liste || []
-  const vagter = data?.aabne_vagter_liste || []
   const koncepter = data?.per_koncept || []
   // Skjul scheduler-stoej (proaktiv_gennemgang) — kun rigtige haendelser i feedet.
   const aktivitet = (data?.seneste_aktivitet || []).filter((a) => a.handling !== 'proaktiv_gennemgang')
@@ -186,10 +184,10 @@ export default function Overblik() {
   return (
     <div style={{ fontFamily: font }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Overblik</h1>
+        <h1 style={{ fontSize: 22, margin: '0 0 4px', fontWeight: 500 }}>Rapporter</h1>
         {data?.genereret && <span style={{ color: c.sub, fontSize: 13 }}>Opdateret {fmtTid(data.genereret)}</span>}
       </div>
-      <p style={{ color: c.sub, marginTop: 0 }}>Driften i tal — og det du skal handle på.</p>
+      <p style={{ color: c.sub, marginTop: 0, fontSize: 15 }}>Hvordan går det? Tal og udvikling. Det du skal handle på står på Forsiden.</p>
 
       <HelbredBanner h={helbred} />
 
@@ -208,7 +206,6 @@ export default function Overblik() {
             <KPI label="Bemandingsgrad" value={`${tal(n.bemandingsgrad)}%`} attention={Number(n.bemandingsgrad) > 0 && Number(n.bemandingsgrad) < 100} />
             <KPI label="Åbne vagter" value={tal(n.aabne_vagter)} sub={Number(n.aabne_vagter) > 0 ? 'kræver bemanding' : 'alle dækket'} attention={Number(n.aabne_vagter) > 0} />
             <KPI label="Manglende fakturaer" value={tal(n.manglende_fakturaer)} sub={kr(n.manglende_fakturaer_beloeb)} attention={Number(n.manglende_fakturaer) > 0} />
-            <KPI label="Ventende godkendelser" value={tal(godkend.length)} sub={godkend.length > 0 ? 'medarbejdere' : 'ingen'} attention={godkend.length > 0} />
             <KPI label="Kladder klar" value={tal(n.kladder_klar)} sub={Number(n.kladder_klar) > 0 ? 'klar til afsendelse' : 'ingen'} attention={Number(n.kladder_klar) > 0} />
           </div>
 
@@ -216,43 +213,6 @@ export default function Overblik() {
           <div style={{ ...card, marginTop: sp(3) }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: c.slate2, marginBottom: 6 }}>Omsætning pr. måned</div>
             <SoejleGraf data={graf} />
-          </div>
-
-          {/* Handlingskort */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: sp(3), marginTop: sp(3) }}>
-            <Kort titel="Ventende Enzo-godkendelser" badge={godkend.length}>
-              {godkend.length === 0 ? <Tom>Ingen ventende.</Tom> : godkend.map((g, i) => (
-                <Raekke key={g.id} top={i > 0}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>{g.navn || 'Ukendt'}</span>
-                </Raekke>
-              ))}
-            </Kort>
-
-            <Kort titel="Manglende fakturaer" badge={fakturaer.length}>
-              {fakturaer.length === 0 ? <Tom>Ingen manglende fakturaer.</Tom> : fakturaer.map((f, i) => (
-                <Raekke key={f.id} top={i > 0}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.kunde || 'Ukendt'}</div>
-                    <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>{fmtDato(f.dato)}</div>
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap' }}>{kr(f.beloeb)}</div>
-                </Raekke>
-              ))}
-            </Kort>
-
-            <Kort titel="Åbne vagter" badge={vagter.length}>
-              {vagter.length === 0 ? <Tom>Alle vagter dækket.</Tom> : vagter.map((v, i) => (
-                <Raekke key={v.id} top={i > 0}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.event || 'Ukendt'}</div>
-                    <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
-                      {v.koncept && <span style={{ fontWeight: 500 }}>{v.koncept}</span>}{v.koncept ? ' · ' : ''}{fmtDato(v.dato)}
-                    </div>
-                  </div>
-                  {v.rolle && <span style={{ fontSize: 12, color: c.slate2, whiteSpace: 'nowrap' }}>{v.rolle}</span>}
-                </Raekke>
-              ))}
-            </Kort>
           </div>
 
           {/* Omsætning pr. enhed + Seneste aktivitet */}
@@ -274,7 +234,7 @@ export default function Overblik() {
               {aktivitet.length === 0 ? <Tom>Ingen nylig aktivitet.</Tom> : aktivitet.map((a, i) => (
                 <Raekke key={i} top={i > 0}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14 }}>{handlingTekst(a.handling)}</div>
+                    <div style={{ fontSize: 14 }}>{a.handling_tekst || handlingTekst(a.handling)}</div>
                     <div style={{ fontSize: 12, color: c.sub, marginTop: 2 }}>
                       {fmtTid(a.tid)}{a.hvem && !erUUID(a.hvem) ? ` · ${a.hvem}` : ''}
                     </div>

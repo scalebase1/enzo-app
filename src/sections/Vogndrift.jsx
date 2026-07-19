@@ -9,6 +9,14 @@ const UGEDAGE = [
 ]
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
+const timerFmt = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 2 })} t`
+
+// check_in/check_out er timestamptz. Vi bygger tidspunktet i browserens lokale
+// tid og sender det som UTC, saa det er utvetydigt uanset serverens zone.
+const tidsstempel = (dato, hhmm) => {
+  const d = new Date(`${dato}T${hhmm}:00`)
+  return isNaN(d) ? null : d.toISOString()
+}
 
 // 'dato' kommer som YYYY-MM-DD. Parses lokalt, saa dagen ikke skrider en
 // tidszone tilbage.
@@ -77,23 +85,27 @@ function Felt({ label, hjaelp, ...rest }) {
 
 // ---------------- Driftsdag ----------------
 
-function Driftsdag({ d, aktive, busy, fejl, onBeman, onAfmeld, onOmsaetning, onStatus, onSlet }) {
+function Driftsdag({ d, aktive, busy, fejl, onBeman, onAfmeld, onStatus, onSlet, onTimer }) {
   const [valgtStaff, setValgtStaff] = useState('')
-  const [beloeb, setBeloeb] = useState(d.omsaetning != null ? String(d.omsaetning) : '')
-  const [visOms, setVisOms] = useState(false)
   const [bekraeftSlet, setBekraeftSlet] = useState(false)
 
   const aflyst = d.status === 'aflyst'
   const ubemandet = Number(d.antal_bemandet || 0) === 0 && !aflyst
+  const manglerTimer = Number(d.timer_mangler || 0) > 0 && !aflyst
   const bemanding = Array.isArray(d.bemanding) ? d.bemanding : []
   const rowBusy = busy === d.id
+  // Timer kan foerst registreres naar dagen er overstaaet (backend afviser
+  // fremtidige vagter) — vis derfor kun handlingen paa dage der er passeret.
+  const passeret = (tilDato(d.dato) || new Date()) <= new Date(new Date().toDateString())
 
   return (
     <Kort style={{
       display: 'flex', flexDirection: 'column', gap: 10,
       opacity: aflyst ? 0.6 : 1,
-      // Den vigtigste information: en vogn der aabner uden folk paa.
-      borderLeft: ubemandet ? `3px solid ${tone.fejl.col}` : undefined,
+      // De to ting William skal reagere paa: ingen paa vagt, eller folk der
+      // har arbejdet uden at faa timer registreret (= uden loen).
+      borderLeft: ubemandet ? `3px solid ${tone.fejl.col}`
+        : manglerTimer ? `3px solid ${tone.advarsel.col}` : undefined,
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
@@ -103,36 +115,54 @@ function Driftsdag({ d, aktive, busy, fejl, onBeman, onAfmeld, onOmsaetning, onS
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <StatusChip status={d.status} farve={STATUS_TONE[d.status]} />
-          {d.omsaetning != null && <StatusChip tekst={kr(d.omsaetning)} farve={tone.ok} />}
+          <StatusChip status={d.status} tekst={d.status_tekst} farve={STATUS_TONE[d.status]} />
+          {Number(d.loen_i_alt || 0) > 0 && (
+            <StatusChip tekst={`${timerFmt(d.timer_i_alt)} · ${kr(d.loen_i_alt)}`} farve={tone.neutral} />
+          )}
         </div>
       </div>
 
       {d.note && <div style={{ fontSize: 13.5, color: c.sub, whiteSpace: 'pre-wrap' }}>{d.note}</div>}
 
-      {ubemandet ? (
+      {ubemandet && (
         <div style={{ background: tone.fejl.bg, color: tone.fejl.col, borderRadius: 10, padding: '8px 12px', fontSize: 14, fontWeight: 500 }}>
           Ingen på vagt — vognen åbner ubemandet
         </div>
-      ) : (
-        bemanding.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {bemanding.map((b) => (
-              <span key={b.vagt_id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: tone.neutral.bg, color: tone.neutral.col, borderRadius: 999, padding: '3px 6px 3px 10px', fontSize: 13 }}>
-                {b.navn}
+      )}
+      {manglerTimer && (
+        <div style={{ background: tone.advarsel.bg, color: tone.advarsel.col, borderRadius: 10, padding: '8px 12px', fontSize: 14 }}>
+          {d.timer_mangler} {Number(d.timer_mangler) === 1 ? 'person mangler' : 'personer mangler'} registrerede timer — de får ikke løn for dagen
+        </div>
+      )}
+
+      {bemanding.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {bemanding.map((b) => {
+            const harTimer = b.timer != null
+            return (
+              <div key={b.vagt_id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 14 }}>
+                <span style={{ fontWeight: 500, color: c.ink }}>{b.navn}</span>
+                {harTimer ? (
+                  <span style={{ color: c.sub }}>{timerFmt(b.timer)} · {kr(b.loen)}</span>
+                ) : (
+                  <span style={{ color: tone.advarsel.col }}>ingen timer</span>
+                )}
+                {!aflyst && passeret && !harTimer && (
+                  <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onTimer(d, b)}>Registrér timer</Pilleknap>
+                )}
                 <button
                   onClick={() => onAfmeld(d, b.staff_id, b.navn)}
                   disabled={!!busy}
                   aria-label={`Afmeld ${b.navn}`}
                   title={`Afmeld ${b.navn}`}
-                  style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: busy ? 'default' : 'pointer', fontSize: 15, lineHeight: 1, padding: '0 2px' }}
+                  style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: c.sub, cursor: busy ? 'default' : 'pointer', fontSize: 17, lineHeight: 1, padding: '0 2px' }}
                 >
                   ×
                 </button>
-              </span>
-            ))}
-          </div>
-        )
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {!aflyst && (
@@ -146,43 +176,17 @@ function Driftsdag({ d, aktive, busy, fejl, onBeman, onAfmeld, onOmsaetning, onS
             <option value="">Sæt på vagt …</option>
             {aktive.map((m) => <option key={m.id} value={m.id}>{m.navn}</option>)}
           </select>
-          <Pilleknap
-            lille
-            disabled={!!busy || !valgtStaff}
-            onClick={() => { onBeman(d, valgtStaff); setValgtStaff('') }}
-          >
+          <Pilleknap lille disabled={!!busy || !valgtStaff} onClick={() => { onBeman(d, valgtStaff); setValgtStaff('') }}>
             {rowBusy ? '…' : 'Bemand'}
           </Pilleknap>
         </div>
       )}
 
-      {visOms && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            style={{ ...input, marginBottom: 0, padding: '9px 10px', flex: '1 1 140px', minWidth: 0 }}
-            value={beloeb}
-            onChange={(e) => setBeloeb(e.target.value)}
-            placeholder="Omsætning i kr"
-            inputMode="decimal"
-          />
-          <Pilleknap lille disabled={!!busy} onClick={() => onOmsaetning(d, beloeb)}>
-            {rowBusy ? 'Gemmer …' : 'Gem'}
-          </Pilleknap>
-          <Pilleknap variant="omrids" lille onClick={() => setVisOms(false)}>Annuller</Pilleknap>
-        </div>
-      )}
-
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {!visOms && (
-          <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => setVisOms(true)}>
-            {d.omsaetning != null ? 'Ret omsætning' : 'Registrér omsætning'}
-          </Pilleknap>
-        )}
-        {!aflyst && (
-          <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onStatus(d, 'aflyst')}>Aflys</Pilleknap>
-        )}
-        {aflyst && (
-          <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onStatus(d, 'planlagt')}>Genåbn</Pilleknap>
+        {!aflyst && <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onStatus(d, 'aflyst')}>Aflys</Pilleknap>}
+        {aflyst && <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onStatus(d, 'planlagt')}>Genåbn</Pilleknap>}
+        {!aflyst && passeret && d.status !== 'afholdt' && (
+          <Pilleknap variant="omrids" lille disabled={!!busy} onClick={() => onStatus(d, 'afholdt')}>Markér afholdt</Pilleknap>
         )}
         {bekraeftSlet ? (
           <>
@@ -344,6 +348,55 @@ function DagDialog({ vogne, onClose, onFaerdig }) {
   )
 }
 
+function TimerDialog({ d, person, onClose, onFaerdig }) {
+  const [moede, setMoede] = useState(d.aabner || '12:00')
+  const [slut, setSlut] = useState(d.lukker || '21:00')
+  const [busy, setBusy] = useState(false)
+  const [fejl, setFejl] = useState('')
+
+  async function gem() {
+    const ind = tidsstempel(d.dato, moede)
+    const ud = tidsstempel(d.dato, slut)
+    if (!ind || !ud) { setFejl('Angiv både mødetid og sluttid.'); return }
+    setBusy(true); setFejl('')
+    // Vogndrift: booking_id er null, driftsdag_id peger paa dagen.
+    const { data, error } = await supabase.rpc('registrer_timer', {
+      p_staff_id: person.staff_id,
+      p_booking_id: null,
+      p_check_in: ind,
+      p_check_out: ud,
+      p_driftsdag_id: d.id,
+    })
+    setBusy(false)
+    const f = tjek(data, error, 'Timerne kunne ikke registreres.')
+    if (f) { setFejl(f); return }
+    onFaerdig(`${data.medarbejder}: ${timerFmt(data.timer)} · ${kr(data.loen)} registreret.`)
+  }
+
+  return (
+    <Dialog onClose={busy ? undefined : onClose} bredde={440} lukVedBackdrop={!busy}>
+      <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+        Registrér timer — {person.navn}
+      </div>
+      <div style={{ fontSize: 14, color: c.sub, marginBottom: 14, textTransform: 'capitalize' }}>
+        {fmtDag(d.dato)} · {d.vogn}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 140px' }}><Felt label="Mødte" type="time" value={moede} onChange={(e) => setMoede(e.target.value)} /></div>
+          <div style={{ flex: '1 1 140px' }}><Felt label="Sluttede" type="time" value={slut} onChange={(e) => setSlut(e.target.value)} /></div>
+        </div>
+        <div style={{ fontSize: 12.5, color: c.sub }}>Løn beregnes ud fra medarbejderens timeløn.</div>
+        <Fejlboks tekst={fejl} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Pilleknap onClick={gem} disabled={busy}>{busy ? 'Gemmer …' : 'Registrér'}</Pilleknap>
+          <Pilleknap variant="omrids" onClick={onClose} disabled={busy}>Annuller</Pilleknap>
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
 // ---------------- Sektionen ----------------
 
 export default function Vogndrift() {
@@ -362,6 +415,7 @@ export default function Vogndrift() {
   const [kvittering, setKvittering] = useState('')
   const [serieAaben, setSerieAaben] = useState(false)
   const [dagAaben, setDagAaben] = useState(false)
+  const [timerFor, setTimerFor] = useState(null)   // { d, person }
 
   // Kun de FYSISKE vogne. Casa Food Catering ejer events og hoerer til i
   // Kalenderen — den skal slet ikke kunne vaelges her.
@@ -416,33 +470,32 @@ export default function Vogndrift() {
     kald(d, 'drift_afmeld', { p_driftsdag_id: d.id, p_staff_id: staffId },
       'Kunne ikke afmelde.', () => `${navn} er afmeldt.`)
 
-  const onOmsaetning = (d, beloeb) => {
-    const t = String(beloeb).trim().replace(/\./g, '').replace(',', '.')
-    if (t === '' || Number.isNaN(Number(t))) { fejlPaa(d.id, 'Skriv et beløb, fx 12500.'); return }
-    return kald(d, 'drift_saet_omsaetning', { p_driftsdag_id: d.id, p_beloeb: Number(t) },
-      'Kunne ikke gemme omsætningen.',
-      (r) => `${r.vogn}: omsætning ${kr(r.omsaetning)} gemt.`)
-  }
 
   const onStatus = (d, status) =>
     kald(d, 'drift_saet_status', { p_driftsdag_id: d.id, p_status: status },
       'Kunne ikke ændre status.',
       (r) => `${r.vogn}: ${r.status}.`)
 
+  const onTimer = (d, person) => { setKvittering(''); setTimerFor({ d, person }) }
+
   const onSlet = (d) =>
     kald(d, 'drift_slet', { p_driftsdag_id: d.id },
       'Kunne ikke slette driftsdagen.',
       (r) => menneskeligFejl(r.besked, 'Driftsdagen er slettet.'))
 
-  // Omsaetning pr. vogn i den viste periode — regnet paa de hentede dage.
-  const omsPrVogn = useMemo(() => {
+  // Loenomkostning pr. vogn i den viste periode — regnet paa de hentede dage.
+  const loenPrVogn = useMemo(() => {
     const m = new Map()
     for (const d of dage || []) {
-      if (d.omsaetning == null) continue
-      m.set(d.vogn, (m.get(d.vogn) || 0) + Number(d.omsaetning))
+      const l = Number(d.loen_i_alt || 0)
+      if (!l) continue
+      m.set(d.vogn, (m.get(d.vogn) || 0) + l)
     }
     return [...m.entries()]
   }, [dage])
+
+  // Dage hvor nogen har staaet paa vagt uden at faa timer registreret.
+  const manglerTimer = (dage || []).filter((d) => Number(d.timer_mangler || 0) > 0 && d.status !== 'aflyst').length
 
   const ubemandede = (dage || []).filter((d) => Number(d.antal_bemandet || 0) === 0 && d.status !== 'aflyst').length
 
@@ -496,13 +549,13 @@ export default function Vogndrift() {
         </div>
       )}
 
-      {/* Noegletal: omsaetning pr. vogn + de ubemandede dage, som er det
-          William skal reagere paa. */}
-      {(omsPrVogn.length > 0 || ubemandede > 0) && (
+      {/* Noegletal: loenomkostning pr. vogn, plus de to ting William skal
+          reagere paa — ubemandede dage og manglende timeregistrering. */}
+      {(loenPrVogn.length > 0 || ubemandede > 0 || manglerTimer > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: sp(3), marginTop: 16 }}>
-          {omsPrVogn.map(([vogn, sum]) => (
+          {loenPrVogn.map(([vogn, sum]) => (
             <Kort key={vogn} padding="14px 16px">
-              <div style={{ fontSize: 13, color: c.sub }}>Omsætning · {vogn}</div>
+              <div style={{ fontSize: 13, color: c.sub }}>Lønomkostning · {vogn}</div>
               <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: c.ink }}>{kr(sum)}</div>
             </Kort>
           ))}
@@ -510,6 +563,12 @@ export default function Vogndrift() {
             <Kort padding="14px 16px">
               <div style={{ fontSize: 13, color: c.sub }}>Ubemandede dage</div>
               <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: tone.fejl.col }}>{ubemandede}</div>
+            </Kort>
+          )}
+          {manglerTimer > 0 && (
+            <Kort padding="14px 16px">
+              <div style={{ fontSize: 13, color: c.sub }}>Dage uden timeregistrering</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: tone.advarsel.col }}>{manglerTimer}</div>
             </Kort>
           )}
         </div>
@@ -540,8 +599,8 @@ export default function Vogndrift() {
                       fejl={radFejl[d.id]}
                       onBeman={onBeman}
                       onAfmeld={onAfmeld}
-                      onOmsaetning={onOmsaetning}
                       onStatus={onStatus}
+                      onTimer={onTimer}
                       onSlet={onSlet}
                     />
                   ))}
@@ -557,6 +616,14 @@ export default function Vogndrift() {
           vogne={vogne}
           onClose={() => setSerieAaben(false)}
           onFaerdig={(t) => { setSerieAaben(false); setKvittering(t); load() }}
+        />
+      )}
+      {timerFor && (
+        <TimerDialog
+          d={timerFor.d}
+          person={timerFor.person}
+          onClose={() => setTimerFor(null)}
+          onFaerdig={(t) => { setTimerFor(null); setKvittering(t); load() }}
         />
       )}
       {dagAaben && (

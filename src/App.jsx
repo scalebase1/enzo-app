@@ -22,23 +22,43 @@ import Beskeder from './sections/Beskeder.jsx'
 import Notifikationer from './sections/Notifikationer.jsx'
 import { c, font, btn } from './ui.js'
 
+// Sektionerne i grupper. Ruterne beholder deres stier, saa ingen links braekker.
 // admin:true = kun admin (William). admin:false = admin + medarbejder.
+// gruppe: null = staar for sig selv (Enzo). 'indstillinger' er sammenklappet.
 const ALL_SECTIONS = [
-  { key: 'forside', label: 'Forside', icon: '⌂', admin: false },
-  { key: 'overblik', label: 'Overblik', icon: '▦', admin: true },
-  { key: 'medarbejdere', label: 'Medarbejdere', icon: '◉', admin: true },
-  { key: 'kunder', label: 'Kunder', icon: '◎', admin: true },
-  { key: 'fakturaer', label: 'Fakturaer', icon: '❑', admin: true },
-  { key: 'loen', label: 'Løn', icon: '¤', admin: true },
-  { key: 'viden', label: 'Viden', icon: '◈', admin: true },
-  { key: 'virksomhed', label: 'Virksomhed', icon: '◫', admin: true },
-  { key: 'madkoncepter', label: 'Madkoncepter', icon: '❖', admin: true },
-  { key: 'kundekontakt', label: 'Kundekontakt', icon: '✎', admin: true },
-  { key: 'vogndrift', label: 'Vogndrift', icon: '⛟', admin: true },
-  { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
-  { key: 'beskeder', label: 'Beskeder', icon: '✉', admin: false },
-  { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
-  { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: true },
+  // Hverdag — det William er i dagligt
+  { key: 'forside', label: 'Forside', icon: '⌂', admin: false, gruppe: 'hverdag' },
+  { key: 'kalender', label: 'Kalender', icon: '▤', admin: false, gruppe: 'hverdag' },
+  { key: 'vogndrift', label: 'Vogndrift', icon: '⛟', admin: true, gruppe: 'hverdag' },
+  { key: 'kundekontakt', label: 'Kundekontakt', icon: '✎', admin: true, gruppe: 'hverdag' },
+
+  // Personale
+  { key: 'medarbejdere', label: 'Medarbejdere', icon: '◉', admin: true, gruppe: 'personale' },
+  { key: 'loen', label: 'Løn', icon: '¤', admin: true, gruppe: 'personale' },
+  // "Beskeder" -> "Personalebeskeder": internt, i modsaetning til Kundekontakt
+  { key: 'beskeder', label: 'Personalebeskeder', icon: '✉', admin: false, gruppe: 'personale' },
+
+  // Forretning
+  { key: 'kunder', label: 'Kunder', icon: '◎', admin: true, gruppe: 'forretning' },
+  { key: 'fakturaer', label: 'Fakturaer', icon: '❑', admin: true, gruppe: 'forretning' },
+  // "Overblik" -> "Rapporter": svarer paa "hvordan gaar det", ikke "hvad nu"
+  { key: 'overblik', label: 'Rapporter', icon: '▦', admin: true, gruppe: 'forretning' },
+
+  // Indstillinger — sjaeldent brugt, sammenklappet nederst
+  { key: 'virksomhed', label: 'Virksomhed', icon: '◫', admin: true, gruppe: 'indstillinger' },
+  { key: 'madkoncepter', label: 'Madkoncepter', icon: '❖', admin: true, gruppe: 'indstillinger' },
+  { key: 'viden', label: 'Viden', icon: '◈', admin: true, gruppe: 'indstillinger' },
+  // Notifikationer er en log, ikke dagligt arbejde
+  { key: 'notifikationer', label: 'Notifikationer', icon: '◔', admin: true, gruppe: 'indstillinger' },
+
+  // Enzo staar for sig selv
+  { key: 'enzo', label: 'Enzo', icon: '✦', admin: true, gruppe: null },
+]
+
+export const GRUPPER = [
+  { key: 'hverdag', titel: 'Hverdag' },
+  { key: 'personale', titel: 'Personale' },
+  { key: 'forretning', titel: 'Forretning' },
 ]
 
 function FullMsg({ children }) {
@@ -104,7 +124,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: font, background: c.bg }}>
-      <Sidebar sections={sections} userEmail={session.user.email} role={role} onLogout={() => supabase.auth.signOut()} />
+      <Sidebar sections={sections} grupper={GRUPPER} userEmail={session.user.email} role={role} onLogout={() => supabase.auth.signOut()} />
       {/* minWidth:0 er afgoerende: uden den kan flex-boernene tvinge hele
           siden bredere end skaermen og skabe vandret scroll. */}
       <main
