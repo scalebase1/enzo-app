@@ -1,22 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
-import { c, card, btn, btnGhost, input, font, sp } from '../ui.js'
+import { c, card, btn, btnGhost, input, font, sp, tone } from '../ui.js'
+import { StatusChip } from '../komponenter/index.jsx'
 
 // Konceptet hoerer til en fysisk madvogn/enhed — vises diskret.
 function EnhedBadge({ navn }) {
-  return (
-    <span style={{ background: '#F1F5F9', color: c.slate2, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      {navn}
-    </span>
-  )
+  return <StatusChip tekst={navn} farve={tone.neutral} />
 }
 
 function InaktivBadge() {
-  return (
-    <span style={{ background: '#E5E7EB', color: '#4B5563', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-      Deaktiveret
-    </span>
-  )
+  return <StatusChip tekst="Deaktiveret" farve={tone.neutral} />
 }
 
 // Sortering styrer raekkefoelgen kunderne ser i bookingformularen.
@@ -142,7 +135,7 @@ export default function Madkoncepter() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Madkoncepter</h1>
+      <h1 style={{ fontSize: 22, margin: '0 0 4px', fontWeight: 500 }}>Madkoncepter</h1>
       <p style={{ color: c.sub, marginTop: 0 }}>
         Dine madkoncepter. Rækkefølgen her styrer, hvad kunderne ser i bookingformularen.
         Deaktiverede koncepter kan ikke vælges til nye bookinger, men historikken bevares.
@@ -150,7 +143,7 @@ export default function Madkoncepter() {
 
       {/* Nyt koncept */}
       <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: c.sub, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>Nyt koncept</div>
+        <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Nyt koncept</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input
             style={{ ...inputU, flex: 1, minWidth: 180 }}
@@ -171,12 +164,12 @@ export default function Madkoncepter() {
       </div>
 
       {fejl && (
-        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>
+        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: tone.fejl.bg, border: `1px solid ${tone.fejl.col}33`, color: tone.fejl.col, fontSize: 14, whiteSpace: 'pre-wrap' }}>
           {fejl}
         </div>
       )}
       {kvittering && !fejl && (
-        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', color: c.green, fontSize: 14 }}>
+        <div style={{ ...card, marginTop: 12, padding: '10px 14px', background: tone.ok.bg, border: `1px solid ${tone.ok.col}33`, color: tone.ok.col, fontSize: 14 }}>
           {kvittering}
         </div>
       )}
@@ -241,7 +234,7 @@ export default function Madkoncepter() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: c.ink }}>{k.navn}</span>
+                        <span style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>{k.navn}</span>
                         {k.enhed && <EnhedBadge navn={k.enhed} />}
                         {!k.aktiv && <InaktivBadge />}
                         <span style={{ fontSize: 12.5, color: c.sub }}>

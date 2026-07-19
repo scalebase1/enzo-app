@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, input, font } from '../ui.js'
 import BookingForm from '../components/BookingForm.jsx'
 import { StatusChip } from '../komponenter/index.jsx'
+import { useSmalSkaerm } from '../komponenter/useSmalSkaerm.js'
 import { tone } from '../ui.js'
 
 const MDR = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december']
@@ -98,7 +99,76 @@ function KonceptTag({ navn }) {
 
 // ---- Genbrugelig maaneds-grid (controlled cursor). events: normaliserede
 // { key, start:Date, chip:{ tid?, label, tone, struck }, raw }. onSelect(raw). ----
+// Én booking-chip. Bruges baade i maaneds-gridet og i mobil-listen.
+function EventChip({ e, onSelect, fuld }) {
+  const t = toneStil(e.chip.tone)
+  return (
+    <button
+      onClick={(ev) => { ev.stopPropagation(); onSelect(e.raw) }}
+      title={e.chip.koncepter ? `${e.chip.label} — ${e.chip.koncepter.join(', ')}` : e.chip.label}
+      style={{
+        width: '100%', minWidth: 0, textAlign: 'left', border: 'none', borderRadius: 6,
+        padding: fuld ? '8px 10px' : '3px 6px', fontSize: fuld ? 14 : 11.5,
+        minHeight: fuld ? 44 : undefined,
+        lineHeight: 1.3, cursor: 'pointer',
+        fontFamily: font, overflow: 'hidden', display: 'block',
+        background: t.background, color: t.color, borderLeft: `3px solid ${t.border}`,
+        textDecoration: e.chip.struck ? 'line-through' : 'none' }}
+    >
+      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {e.chip.tid && <span style={{ fontWeight: 500 }}>{e.chip.tid} </span>}
+        {e.chip.label}
+      </span>
+      {e.chip.koncepter && (
+        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: fuld ? 12.5 : 10.5, fontWeight: 500, opacity: 0.85 }}>
+          {e.chip.koncepter.join(', ')}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// Mobil: 7 kolonner giver ~55px pr. dag — for smalt til baade at laese og
+// ramme. Under brudpunktet vises maaneden derfor som en LISTE med dagene
+// under hinanden. Alle dage er med (ogsaa tomme), saa "klik en dag" stadig
+// virker praecis som i gridet; tomme dage fylder blot én linje.
+function MaanedsListe({ dage, cursor, perDag, today, onSelect, onDayClick }) {
+  const iMdr = dage.filter((d) => iMaaned(d, cursor))
+  return (
+    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      {iMdr.map((d, i) => {
+        const evts = perDag.get(dateKey(d)) || []
+        const erIdag = sameDay(d, today)
+        return (
+          <div
+            key={i}
+            onClick={onDayClick ? () => onDayClick(d) : undefined}
+            style={{
+              display: 'flex', gap: 12, padding: '10px 14px', minWidth: 0,
+              borderTop: i > 0 ? `1px solid ${c.line}` : 'none',
+              background: erIdag ? '#F2F1ED' : 'transparent',
+              cursor: onDayClick ? 'pointer' : 'default',
+              minHeight: evts.length > 0 ? undefined : 44,
+              alignItems: evts.length > 0 ? 'flex-start' : 'center',
+            }}
+          >
+            <div style={{ width: 58, flexShrink: 0, fontSize: 13.5, color: erIdag ? c.ink : c.sub, fontWeight: erIdag ? 500 : 400 }}>
+              {fmtDatoKort(d)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {evts.length === 0
+                ? <span style={{ fontSize: 13.5, color: c.slate }}>—</span>
+                : evts.map((e) => <EventChip key={e.key} e={e} onSelect={onSelect} fuld />)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
+  const smal = useSmalSkaerm(600)
   const perDag = useMemo(() => {
     const m = new Map()
     for (const e of events) {
@@ -121,9 +191,9 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0', flexWrap: 'wrap' }}>
         <button style={btnGhost} onClick={() => skift(-1)} aria-label="Forrige måned">‹</button>
-        <div style={{ fontSize: 18, fontWeight: 500, minWidth: 190, textTransform: 'capitalize' }}>
+        <div style={{ fontSize: 18, fontWeight: 500, minWidth: smal ? 0 : 190, flex: smal ? 1 : undefined, textTransform: 'capitalize' }}>
           {MDR[cursor.getMonth()]} {cursor.getFullYear()}
         </div>
         <button style={btnGhost} onClick={() => skift(1)} aria-label="Næste måned">›</button>
@@ -132,75 +202,64 @@ function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
         </button>
       </div>
 
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {UGEDAGE.map((u) => (
-            <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 500, color: c.sub, textAlign: 'center', borderBottom: `1px solid ${c.line}` }}>
-              {u}
-            </div>
-          ))}
-          {dage.map((d, i) => {
-            const inMonth = iMaaned(d, cursor)
-            const erIdag = sameDay(d, today)
-            const evts = perDag.get(dateKey(d)) || []
-            return (
-              <div
-                key={i}
-                onClick={onDayClick ? () => onDayClick(d) : undefined}
-                style={{
-                  minHeight: 108,
-                  borderRight: (i % 7 !== 6) ? `1px solid ${c.line}` : 'none',
-                  borderBottom: i < 35 ? `1px solid ${c.line}` : 'none',
-                  background: inMonth ? c.card : '#FAFBFC',
-                  padding: 6,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 3,
-                  cursor: onDayClick ? 'pointer' : 'default' }}
-              >
-                <div style={{ textAlign: 'right', marginBottom: 2 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11,
-                      fontSize: 12.5, fontWeight: erIdag ? 500 : 400,
-                      color: erIdag ? '#fff' : (inMonth ? c.text : c.slate),
-                      background: erIdag ? c.blue : 'transparent' }}
-                  >
-                    {d.getDate()}
-                  </span>
-                </div>
-                {evts.map((e) => {
-                  const t = toneStil(e.chip.tone)
-                  return (
-                    <button
-                      key={e.key}
-                      onClick={(ev) => { ev.stopPropagation(); onSelect(e.raw) }}
-                      title={e.chip.koncepter ? `${e.chip.label} — ${e.chip.koncepter.join(', ')}` : e.chip.label}
-                      style={{
-                        width: '100%', textAlign: 'left', border: 'none', borderRadius: 6,
-                        padding: '3px 6px', fontSize: 11.5, lineHeight: 1.3, cursor: 'pointer',
-                        fontFamily: font, overflow: 'hidden', display: 'block',
-                        background: t.background, color: t.color, borderLeft: `3px solid ${t.border}`,
-                        textDecoration: e.chip.struck ? 'line-through' : 'none' }}
-                    >
-                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {e.chip.tid && <span style={{ fontWeight: 500 }}>{e.chip.tid} </span>}
-                        {e.chip.label}
-                      </span>
-                      {e.chip.koncepter && (
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, fontWeight: 500, opacity: 0.85 }}>
-                          {e.chip.koncepter.join(', ')}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
+      {smal ? (
+        <MaanedsListe
+          dage={dage} cursor={cursor} perDag={perDag} today={today}
+          onSelect={onSelect} onDayClick={onDayClick}
+        />
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          {/* minmax(0, 1fr) i stedet for 1fr: '1fr' er minmax(auto, 1fr), og
+              'auto' har min-content som gulv — saa en lang ubrydelig titel i
+              én celle kunne traekke DEN kolonne bredere end de oevrige og
+              skubbe lør/søn ud af skaermen. Med 0 som minimum kan alle syv
+              kolonner altid dele bredden ligeligt. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+            {UGEDAGE.map((u) => (
+              <div key={u} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 500, color: c.sub, textAlign: 'center', borderBottom: `1px solid ${c.line}`, minWidth: 0 }}>
+                {u}
               </div>
-            )
-          })}
+            ))}
+            {dage.map((d, i) => {
+              const inMonth = iMaaned(d, cursor)
+              const erIdag = sameDay(d, today)
+              const evts = perDag.get(dateKey(d)) || []
+              return (
+                <div
+                  key={i}
+                  onClick={onDayClick ? () => onDayClick(d) : undefined}
+                  style={{
+                    minHeight: 108,
+                    minWidth: 0,          // uden denne arver cellen min-content som minimum
+                    overflow: 'hidden',
+                    borderRight: (i % 7 !== 6) ? `1px solid ${c.line}` : 'none',
+                    borderBottom: i < 35 ? `1px solid ${c.line}` : 'none',
+                    background: inMonth ? c.card : '#FAFBFC',
+                    padding: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 3,
+                    cursor: onDayClick ? 'pointer' : 'default' }}
+                >
+                  <div style={{ textAlign: 'right', marginBottom: 2 }}>
+                    <span
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11,
+                        fontSize: 12.5, fontWeight: erIdag ? 500 : 400,
+                        color: erIdag ? '#fff' : (inMonth ? c.text : c.slate),
+                        background: erIdag ? c.blue : 'transparent' }}
+                    >
+                      {d.getDate()}
+                    </span>
+                  </div>
+                  {evts.map((e) => <EventChip key={e.key} e={e} onSelect={onSelect} />)}
+                </div>
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </>
   )
 }
