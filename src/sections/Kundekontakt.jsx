@@ -492,15 +492,20 @@ export default function Kundekontakt() {
     setBooking(b)
   }
 
-  const antal = hub?.antal || {}
+  // Badges skal vise det SAMME tal som fanen selv viser, ellers ser de forkerte ud.
+  // Henvendelser talte foer 'ubesvarede + kolde' (kraever opfoelgning) mens fanen
+  // viser "Alle (N)" = alle leads — to forskellige tal, som tilfaeldigvis kunne
+  // staa stille samtidig. Nu kommer badgen fra samme kilde som indholdet.
   const faner = useMemo(() => {
     const venter = Number(hub?.poster?.length || 0)
+    const alleLeads = Object.values(antalPrStatus || {}).reduce((a, b) => a + Number(b || 0), 0)
+    const klarKladder = (kladder || []).filter((k) => k.status === 'klar').length
     return [
       { key: FANER.handles, label: venter > 0 ? `Skal handles (${venter})` : 'Skal handles' },
-      { key: FANER.henvendelser, label: `Henvendelser (${Number(antal.ubesvarede || 0) + Number(antal.kolde || 0)})` },
-      { key: FANER.kladder, label: `Kladder (${Number(antal.kladder || 0)})` },
+      { key: FANER.henvendelser, label: `Henvendelser (${alleLeads})` },
+      { key: FANER.kladder, label: `Kladder (${klarKladder})` },
     ]
-  }, [hub, antal])
+  }, [hub, antalPrStatus, kladder])
 
   function skiftFane(k) {
     setFane(k)
