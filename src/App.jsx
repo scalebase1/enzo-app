@@ -15,6 +15,7 @@ import Viden from './sections/Viden.jsx'
 import Virksomhed from './sections/Virksomhed.jsx'
 import Madkoncepter from './sections/Madkoncepter.jsx'
 import Kundekontakt from './sections/Kundekontakt.jsx'
+import Vogndrift from './sections/Vogndrift.jsx'
 import Enzo from './sections/Enzo.jsx'
 import Kalender from './sections/Kalender.jsx'
 import Beskeder from './sections/Beskeder.jsx'
@@ -33,6 +34,7 @@ const ALL_SECTIONS = [
   { key: 'virksomhed', label: 'Virksomhed', icon: '◫', admin: true },
   { key: 'madkoncepter', label: 'Madkoncepter', icon: '❖', admin: true },
   { key: 'kundekontakt', label: 'Kundekontakt', icon: '✎', admin: true },
+  { key: 'vogndrift', label: 'Vogndrift', icon: '⛟', admin: true },
   { key: 'kalender', label: 'Kalender', icon: '▤', admin: false },
   { key: 'beskeder', label: 'Beskeder', icon: '✉', admin: false },
   { key: 'enzo', label: 'Enzo', icon: '✦', admin: true },
@@ -126,6 +128,7 @@ export default function App() {
           <Route path="/virksomhed" element={adminOnly(<Virksomhed />)} />
           <Route path="/madkoncepter" element={adminOnly(<Madkoncepter />)} />
           <Route path="/kundekontakt" element={adminOnly(<Kundekontakt />)} />
+          <Route path="/vogndrift" element={adminOnly(<Vogndrift />)} />
           <Route path="/kalender" element={<Kalender />} />
           <Route path="/beskeder" element={<Beskeder />} />
           <Route path="/enzo" element={adminOnly(<Enzo />)} />
