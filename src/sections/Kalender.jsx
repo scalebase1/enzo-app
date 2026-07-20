@@ -115,12 +115,19 @@ function EventChip({ e, onSelect, fuld }) {
         background: t.background, color: t.color, borderLeft: `3px solid ${t.border}`,
         textDecoration: e.chip.struck ? 'line-through' : 'none' }}
     >
-      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {/* fuld (listevisning): teksten ombryder, saa hele kundenavnet er
+          synligt — det er den vigtigste info, og touch kan ikke se title-
+          attributtet. I gridet trunkeres, hvor pladsen er trang. */}
+      <span style={fuld
+        ? { display: 'block', overflowWrap: 'anywhere' }
+        : { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {e.chip.tid && <span style={{ fontWeight: 500 }}>{e.chip.tid} </span>}
         {e.chip.label}
       </span>
       {e.chip.koncepter && (
-        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: fuld ? 12.5 : 10.5, fontWeight: 500, opacity: 0.85 }}>
+        <span style={fuld
+          ? { display: 'block', overflowWrap: 'anywhere', fontSize: 12.5, fontWeight: 500, opacity: 0.85 }
+          : { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, fontWeight: 500, opacity: 0.85 }}>
           {e.chip.koncepter.join(', ')}
         </span>
       )}
