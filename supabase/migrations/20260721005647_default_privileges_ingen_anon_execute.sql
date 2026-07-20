@@ -1,0 +1,16 @@
+-- Root cause-fix: default privileges på skema public tildelte auto EXECUTE til
+-- 'anon' på hver ny funktion (bekræftet i pg_default_acl). Det er årsagen til at
+-- hver ny SECURITY DEFINER-funktion fødtes anon-eksekverbar, og til de mange
+-- tidligere "luk anon"-migrationer.
+--
+-- Flip defaulten for rollen 'postgres' (den migrationer kører som), så FREMTIDIGE
+-- funktioner ikke længere er anon-eksekverbare. authenticated + service_role
+-- beholdes (admin-app + edge functions). Eksisterende funktioner røres ikke
+-- (default-ændringer er fremadrettede; tilstanden er allerede 0 anon-eksekverbare
+-- SECURITY DEFINER-funktioner).
+--
+-- BEGRÆNSNING: default'en ejet af 'supabase_admin' kan IKKE ændres herfra
+-- (postgres er ikke medlem) og kan gen-asserteres ved platformopgraderinger.
+-- Derfor er det planlagte CI-check mod prod (supabase/tests/check_anon_definer.sql)
+-- den autoritative sikring.
+alter default privileges in schema public revoke execute on functions from anon;

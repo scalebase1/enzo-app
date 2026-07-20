@@ -1,0 +1,29 @@
+name: Anon SECURITY DEFINER guard
+
+# Holdbar sikring: kører supabase/tests/check_anon_definer.sql read-only mod PROD
+# dagligt. Formål: fange grants som Supabase gen-asserterer ved platform-
+# opgraderinger (uden for vores migrationer) — et branch/lokalt-DB-check kan
+# aldrig se dem. Kører bevidst IKKE i PR, så ingen config.toml / lokalt stack kræves.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # dagligt kl. 06:00 UTC
+  workflow_dispatch:       # manuel kørsel
+
+permissions:
+  contents: read
+
+jobs:
+  prod-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kør anon-definer-guard mod PROD (read-only)
+        env:
+          # Secret: connection string til prod. Brug en dedikeret READ-ONLY-rolle
+          # (ci_guard). Hent Session pooler-strengen fra Supabase (Dashboard →
+          # Connect) — den er IPv4-kompatibel; direkte db-host kan være IPv6-only.
+          SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          psql "$SUPABASE_DB_URL_PROD" \
+            -v ON_ERROR_STOP=1 -f supabase/tests/check_anon_definer.sql
