@@ -174,7 +174,7 @@ function MaanedsListe({ dage, cursor, perDag, today, onSelect, onDayClick }) {
   )
 }
 
-function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
+export function MaanedsGrid({ cursor, onCursor, events, onSelect, onDayClick }) {
   const smal = useSmalSkaerm(600)
   const perDag = useMemo(() => {
     const m = new Map()

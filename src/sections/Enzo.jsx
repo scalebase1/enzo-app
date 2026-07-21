@@ -25,7 +25,7 @@ function tidspunkt(ts) {
 
 // Chat med Enzo via enzo-chat (edge-funktion → Supabase RPC'er). Historik er lokal
 // state — Enzo har selv Postgres-memory paa backend-siden.
-function EnzoChat({ onSvar }) {
+function EnzoChat({ onSvar, forslag = [], onAfgoer, busyId }) {
   const [beskeder, setBeskeder] = useState([])
   const [tekst, setTekst] = useState('')
   const [venter, setVenter] = useState(false)
@@ -178,6 +178,33 @@ function EnzoChat({ onSvar }) {
               </div>
             </div>
           )}
+
+          {/* Afventende forslag vises som KNAPPER i selve chatten — William
+              godkender eller afviser dem, hvor han er, uden at lede efter dem
+              i sidepanelet. */}
+          {onAfgoer && forslag.map((f) => (
+            <div key={f.id} style={{ alignSelf: 'stretch', background: c.card, border: `1px solid ${c.line}`, borderLeft: `4px solid ${c.accent}`, borderRadius: 12, padding: '10px 13px' }}>
+              <div style={{ fontSize: 11, color: c.slate2, marginBottom: 4 }}>Forslag fra Enzo</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: c.ink }}>{f.menneske_tekst}</div>
+              {f.begrundelse && <div style={{ fontSize: 12.5, color: c.sub, marginTop: 4 }}>{f.begrundelse}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <button
+                  style={{ ...btn, background: c.green, padding: '8px 14px', minHeight: 40, opacity: busyId ? 0.6 : 1, cursor: busyId ? 'default' : 'pointer' }}
+                  disabled={!!busyId}
+                  onClick={() => onAfgoer(f, 'godkendt')}
+                >
+                  {busyId === f.id ? 'Arbejder …' : 'Godkend'}
+                </button>
+                <button
+                  style={{ ...btnGhost, padding: '8px 14px', minHeight: 40, opacity: busyId ? 0.6 : 1, cursor: busyId ? 'default' : 'pointer' }}
+                  disabled={!!busyId}
+                  onClick={() => onAfgoer(f, 'afvist')}
+                >
+                  Afvis
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
         {historikFejl && (
           <div style={{ padding: '8px 16px', color: c.red, fontSize: 13, borderTop: `1px solid ${c.line}`, whiteSpace: 'pre-wrap' }}>{historikFejl}</div>
@@ -347,7 +374,7 @@ export default function Enzo() {
         </div>
 
         <div style={{ flex: '1 1 340px', minWidth: 320, maxWidth: 560, marginTop: 16 }}>
-          <EnzoChat onSvar={load} />
+          <EnzoChat onSvar={load} forslag={ventende} onAfgoer={afgoer} busyId={busyId} />
         </div>
       </div>
     </div>

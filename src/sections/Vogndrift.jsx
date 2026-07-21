@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { c, card, input, sp, tone } from '../ui.js'
 import { Kort, StatusChip, Pilleknap, Segmentvaelger, Dialog, TomTilstand } from '../komponenter/index.jsx'
+import { MaanedsGrid, byggeEnhedFarver, UDEN_ENHED_FARVE } from './Kalender.jsx'
 
 const UGEDAGE = [
   { nr: 1, kort: 'Man' }, { nr: 2, kort: 'Tir' }, { nr: 3, kort: 'Ons' },
@@ -140,10 +141,10 @@ function Driftsdag({ d, aktive, busy, fejl, onBeman, onAfmeld, onStatus, onSlet,
           {bemanding.map((b) => {
             const harTimer = b.timer != null
             return (
-              <div key={b.vagt_id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 14 }}>
+              <div key={b.vagt_id || b.staff_id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 14 }}>
                 <span style={{ fontWeight: 500, color: c.ink }}>{b.navn}</span>
                 {harTimer ? (
-                  <span style={{ color: c.sub }}>{timerFmt(b.timer)} · {kr(b.loen)}</span>
+                  <span style={{ color: c.sub }}>{timerFmt(b.timer)}{b.loen != null ? ` · ${kr(b.loen)}` : ''}</span>
                 ) : (
                   <span style={{ color: tone.advarsel.col }}>ingen timer</span>
                 )}
@@ -417,6 +418,13 @@ export default function Vogndrift() {
   const [dagAaben, setDagAaben] = useState(false)
   const [timerFor, setTimerFor] = useState(null)   // { d, person }
 
+  const [visning, setVisning] = useState('kalender') // 'kalender' | 'liste'
+  const [farver, setFarver] = useState(() => new Map())
+  const [kalDage, setKalDage] = useState(null)       // drift_kalender-dage
+  const [kalFejl, setKalFejl] = useState('')
+  const [kalCursor, setKalCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
+  const [valgtDag, setValgtDag] = useState(null)     // drift_kalender-dag i detalje-dialogen
+
   // Kun de FYSISKE vogne. Casa Food Catering ejer events og hoerer til i
   // Kalenderen — den skal slet ikke kunne vaelges her.
   useEffect(() => {
@@ -424,6 +432,7 @@ export default function Vogndrift() {
     supabase.rpc('enheder_liste').then(({ data, error }) => {
       if (!alive || error || !Array.isArray(data)) return
       setVogne(data.filter((e) => e.type === 'madvogn'))
+      setFarver(byggeEnhedFarver(data))   // samme farvetildeling som Kalender/Forside
     })
     supabase.rpc('medarbejdere_liste').then(({ data }) => {
       if (!alive || !data || data.ok === false) return
@@ -445,7 +454,20 @@ export default function Vogndrift() {
     setDage(data.dage || [])
   }, [P, periode, vognFilter])
 
+  // Kalenderen henter et bredt vindue (uden enhed-filter i kontrakten) og
+  // navigeres pr. maaned lokalt; vogn-filteret anvendes klientside.
+  const loadKalender = useCallback(async () => {
+    setKalFejl('')
+    const { data, error } = await supabase.rpc('drift_kalender', {})
+    const f = tjek(data, error, 'Kunne ikke hente vognkalenderen.')
+    if (f) { setKalFejl(f); return }
+    setKalDage(data.dage || [])
+    // Hold en aaben detalje i sync med friske data (som bookingdetaljen).
+    setValgtDag((prev) => (prev ? (data.dage || []).find((x) => x.driftsdag_id === prev.driftsdag_id) || null : prev))
+  }, [])
+
   useEffect(() => { load({ foerste: true }) }, [load])
+  useEffect(() => { loadKalender() }, [loadKalender])
 
   function fejlPaa(id, tekst) { setRadFejl((f) => ({ ...f, [id]: tekst })) }
   function rydFejl(id) { setRadFejl((f) => ({ ...f, [id]: '' })) }
@@ -459,6 +481,7 @@ export default function Vogndrift() {
     if (f) { fejlPaa(d.id, f); return }
     if (kvit) setKvittering(kvit(data))
     load()
+    loadKalender()
   }
 
   const onBeman = (d, staffId) =>
@@ -514,6 +537,41 @@ export default function Vogndrift() {
     return [...grupper.values()]
   }, [dage])
 
+  // Kalender-events til den genbrugte maanedskomponent. To signaler pr. dag,
+  // begge altid til stede: venstrekantens FARVE = hvilken vogn (identitet,
+  // via byggeEnhedFarver som resten af appen), og BAGGRUNDEN = status —
+  // ROED naar vognen aabner ubemandet, GUL naar folk mangler timeregistrering.
+  const kalEvents = useMemo(() => (kalDage || [])
+    .filter((d) => vognFilter === 'alle' || d.enhed_id === vognFilter)
+    .map((d) => {
+      const vf = farver.get(d.enhed) || UDEN_ENHED_FARVE
+      let bg = vf.background, col = vf.color
+      if (d.ubemandet) { bg = tone.fejl.bg; col = tone.fejl.col }
+      else if (Number(d.timer_mangler || 0) > 0) { bg = tone.advarsel.bg; col = tone.advarsel.col }
+      return {
+        key: d.driftsdag_id,
+        start: tilDato(d.dato),
+        chip: {
+          label: d.titel || `${d.vogn} ${d.aabner}–${d.lukker}`,
+          tone: { background: bg, color: col, border: vf.border },
+          struck: !!d.aflyst,
+        },
+        raw: d,
+      }
+    }), [kalDage, vognFilter, farver])
+
+  // drift_kalender-dagen -> den form Driftsdag-kortet forventer (drift_liste).
+  // bemanding mangler vagt_id og loen pr. person i kalenderen — kortet er
+  // gjort robust mod begge dele.
+  const normDag = (dk) => ({
+    id: dk.driftsdag_id, vogn: dk.vogn, dato: dk.dato,
+    aabner: dk.aabner, lukker: dk.lukker,
+    status: dk.status, status_tekst: dk.status_tekst, note: dk.note,
+    bemanding: (dk.bemanding || []).map((b) => ({ staff_id: b.staff_id, navn: b.navn, timer: b.timer })),
+    antal_bemandet: dk.antal_bemandet, timer_i_alt: dk.timer_i_alt,
+    loen_i_alt: dk.loen_i_alt, timer_mangler: dk.timer_mangler,
+  })
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -531,15 +589,22 @@ export default function Vogndrift() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
         <Segmentvaelger
+          muligheder={[{ key: 'kalender', label: 'Kalender' }, { key: 'liste', label: 'Liste' }]}
+          valgt={visning}
+          onVaelg={setVisning}
+        />
+        <Segmentvaelger
           muligheder={[{ key: 'alle', label: 'Alle vogne' }, ...vogne.map((v) => ({ key: v.id, label: v.navn }))]}
           valgt={vognFilter}
           onVaelg={setVognFilter}
         />
-        <Segmentvaelger
-          muligheder={Object.entries(P).map(([k, v]) => ({ key: k, label: v.label }))}
-          valgt={periode}
-          onVaelg={setPeriode}
-        />
+        {visning === 'liste' && (
+          <Segmentvaelger
+            muligheder={Object.entries(P).map(([k, v]) => ({ key: k, label: v.label }))}
+            valgt={periode}
+            onVaelg={setPeriode}
+          />
+        )}
       </div>
 
       {kvittering && (
@@ -549,6 +614,35 @@ export default function Vogndrift() {
         </div>
       )}
 
+      {visning === 'kalender' ? (
+        <div style={{ marginTop: 16 }}>
+          {kalFejl && <div style={{ ...card, color: c.red, whiteSpace: 'pre-wrap' }}>{kalFejl}</div>}
+          {!kalFejl && kalDage === null && <div style={{ ...card, color: c.sub }}>Henter vognkalenderen …</div>}
+          {!kalFejl && kalDage && (
+            <>
+              <MaanedsGrid
+                cursor={kalCursor}
+                onCursor={setKalCursor}
+                events={kalEvents}
+                onSelect={(raw) => { setKvittering(''); setValgtDag(raw) }}
+              />
+              {/* Signaturforklaring, saa de to markeringer kan aflaeses paa et blik. */}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12, fontSize: 12.5, color: c.sub }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: tone.fejl.bg, border: `1px solid ${tone.fejl.col}` }} /> Åbner ubemandet
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: tone.advarsel.bg, border: `1px solid ${tone.advarsel.col}` }} /> Mangler timeregistrering
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, borderLeft: `3px solid ${c.slate2}` }} /> Kantfarve = vogn
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
       {/* Noegletal: loenomkostning pr. vogn, plus de to ting William skal
           reagere paa — ubemandede dage og manglende timeregistrering. */}
       {(loenPrVogn.length > 0 || ubemandede > 0 || manglerTimer > 0) && (
@@ -611,11 +705,14 @@ export default function Vogndrift() {
         )
       )}
 
+        </>
+      )}
+
       {serieAaben && (
         <SerieDialog
           vogne={vogne}
           onClose={() => setSerieAaben(false)}
-          onFaerdig={(t) => { setSerieAaben(false); setKvittering(t); load() }}
+          onFaerdig={(t) => { setSerieAaben(false); setKvittering(t); load(); loadKalender() }}
         />
       )}
       {timerFor && (
@@ -623,15 +720,36 @@ export default function Vogndrift() {
           d={timerFor.d}
           person={timerFor.person}
           onClose={() => setTimerFor(null)}
-          onFaerdig={(t) => { setTimerFor(null); setKvittering(t); load() }}
+          onFaerdig={(t) => { setTimerFor(null); setKvittering(t); load(); loadKalender() }}
         />
       )}
       {dagAaben && (
         <DagDialog
           vogne={vogne}
           onClose={() => setDagAaben(false)}
-          onFaerdig={(t) => { setDagAaben(false); setKvittering(t); load() }}
+          onFaerdig={(t) => { setDagAaben(false); setKvittering(t); load(); loadKalender() }}
         />
+      )}
+
+      {/* Klik paa en dag i kalenderen -> samme kort som i listen, i en dialog.
+          Genbruger de UI-testede handlinger (bemand/afmeld/timer/aflys/slet). */}
+      {valgtDag && (
+        <Dialog onClose={() => setValgtDag(null)} bredde={520}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <button onClick={() => setValgtDag(null)} aria-label="Luk" style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, color: c.slate2, cursor: 'pointer', padding: 0 }}>×</button>
+          </div>
+          <Driftsdag
+            d={normDag(valgtDag)}
+            aktive={aktive}
+            busy={busy}
+            fejl={radFejl[valgtDag.driftsdag_id]}
+            onBeman={onBeman}
+            onAfmeld={onAfmeld}
+            onStatus={onStatus}
+            onTimer={onTimer}
+            onSlet={onSlet}
+          />
+        </Dialog>
       )}
     </div>
   )
