@@ -622,7 +622,7 @@ export default function Kundekontakt() {
       { key: FANER.henvendelser, label: `Henvendelser (${alleLeads})` },
       { key: FANER.kladder, label: `Kladder (${klarKladder})` },
     ]
-  }, [hub, antalPrStatus, kladder])
+  }, [hub, antalPrStatus, kladder, bookinger])
 
   function skiftFane(k) {
     setFane(k)
