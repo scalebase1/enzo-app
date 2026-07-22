@@ -17,8 +17,13 @@ function LoyalBadge() {
 }
 
 // Momsloven kraever koebers adresse paa fakturaen. Uden adresse kan kunden ikke faktureres.
+// Manglende adresse er et TODO, ikke en fejl. 10 af 16 kunder manglede adresse,
+// og med roed markering blev CRM'et til en advarselsliste hvor intet skilte sig
+// ud. Roed er reserveret til noget der skal ordnes NU — en adresse skal foerst
+// bruges den dag der skal faktureres, og DER blokerer backend alligevel med en
+// praecis besked.
 function ManglerAdresseBadge() {
-  return <StatusChip tekst="⚠ Mangler adresse" farve={tone.fejl} />
+  return <StatusChip tekst="Mangler adresse" farve={tone.neutral} />
 }
 
 function TypeBadge({ type }) {
@@ -243,7 +248,7 @@ function Kontaktlinje({ label, value, advarsel }) {
     <div style={{ fontSize: 14, display: 'flex', gap: 8 }}>
       <span style={{ color: c.sub, minWidth: 72 }}>{label}</span>
       {advarsel ? (
-        <span style={{ fontWeight: 500, color: c.red }}>Mangler — kræves for at fakturere</span>
+        <span style={{ color: c.sub }}>Mangler — udfyldes inden der faktureres</span>
       ) : (
         <span style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{value || '—'}</span>
       )}
@@ -258,7 +263,7 @@ function KundeKort({ kunde, onClick }) {
       onClick={onClick}
       style={{
         ...card, textAlign: 'left', cursor: 'pointer', fontFamily: font, display: 'flex', flexDirection: 'column', gap: 0,
-        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : (manglerAdresse ? `4px solid ${c.red}` : `1px solid ${c.line}`) }}
+        borderLeft: kunde.loyal ? `4px solid ${c.blue}` : `1px solid ${c.line}` }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ minWidth: 0 }}>
@@ -334,8 +339,8 @@ export default function Kunder() {
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Kunder</h1>
         {kunder && <span style={{ color: c.sub, fontSize: 14 }}>{total} kunde{total === 1 ? '' : 'r'}</span>}
         {kunder && udenAdresse > 0 && (
-          <span style={{ background: '#F6E7E4', color: '#8C3E36', fontSize: 12.5, fontWeight: 500, padding: '3px 10px', borderRadius: 20 }}>
-            ⚠ {udenAdresse} mangler adresse
+          <span style={{ background: tone.neutral.bg, color: tone.neutral.col, fontSize: 12.5, fontWeight: 500, padding: '3px 10px', borderRadius: 20 }}>
+            {udenAdresse} mangler adresse
           </span>
         )}
       </div>

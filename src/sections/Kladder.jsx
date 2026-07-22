@@ -178,7 +178,7 @@ export function KladdeRediger({ kladde, onClose, onDone, onRefresh }) {
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button style={{ ...btn, background: c.green, opacity: (laast || !kanSende) ? 0.55 : 1 }} disabled={laast || !kanSende} onClick={() => { setFejl(''); setBekraeft('send') }}>Send til kunde</button>
+          <button style={{ ...btn, opacity: (laast || !kanSende) ? 0.55 : 1 }} disabled={laast || !kanSende} onClick={() => { setFejl(''); setBekraeft('send') }}>Send til kunde</button>
           <button style={{ ...btnGhost, opacity: (laast || !dirty) ? 0.55 : 1 }} disabled={laast || !dirty} onClick={gem}>{busy === 'gem' ? 'Gemmer …' : 'Gem ændringer'}</button>
           <button style={{ ...btnGhost, color: c.red, marginLeft: 'auto', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => { setFejl(''); setBekraeft('slet') }}>Slet</button>
         </div>

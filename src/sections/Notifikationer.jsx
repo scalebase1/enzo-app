@@ -49,7 +49,11 @@ export default function Notifikationer() {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('alle') // 'alle' | 'telegram' | 'email'
+  // Perioden er det primaere filter: 206 poster i én liste er ikke et arkiv,
+  // det er stoej. Standard er 7 dage — historikken er der stadig, den er bare
+  // ikke det foerste William ser.
+  const [periode, setPeriode] = useState('7')     // '7' | '30' | 'alle'
+  const [filter, setFilter] = useState('alle')    // kanal
 
   const load = useCallback(async () => {
     setErr('')
@@ -62,20 +66,37 @@ export default function Notifikationer() {
 
   useEffect(() => { load() }, [load])
 
-  const antal = useMemo(() => {
-    const a = { alle: (liste || []).length, telegram: 0, email: 0 }
-    for (const n of liste || []) if (a[n.kanal] != null) a[n.kanal]++
-    return a
-  }, [liste])
+  // Perioden anvendes FOER kanal, saa kanaltaellerne matcher det viste.
+  const iPeriode = useMemo(() => {
+    if (periode === 'alle') return liste || []
+    const graense = Date.now() - Number(periode) * 86400000
+    return (liste || []).filter((n) => {
+      const t = new Date(n.tid).getTime()
+      return !Number.isFinite(t) || t >= graense    // ulaeselig dato skjules aldrig
+    })
+  }, [liste, periode])
 
-  // RPC leverer allerede nyeste foerst — bevar orden, filtrér kun paa kanal.
-  const synlige = filter === 'alle' ? (liste || []) : (liste || []).filter((n) => n.kanal === filter)
+  // Kanaler udledes af data frem for en fast liste: Telegram blev taget ud af
+  // systemet 16-07-2026, og et fast filter for en doed kanal er en knap der
+  // altid viser nul.
+  const kanaler = useMemo(() => {
+    const set = new Map()
+    for (const n of iPeriode) set.set(n.kanal, (set.get(n.kanal) || 0) + 1)
+    return [...set.entries()].sort((a, b) => b[1] - a[1])
+  }, [iPeriode])
+
+  // RPC leverer allerede nyeste foerst — bevar orden.
+  const synlige = filter === 'alle' ? iPeriode : iPeriode.filter((n) => n.kanal === filter)
 
   return (
     <div style={{ fontFamily: font }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Notifikationer</h1>
-        {liste && <span style={{ color: c.sub, fontSize: 14 }}>{liste.length} notifikation{liste.length === 1 ? '' : 'er'}</span>}
+        {liste && (
+          <span style={{ color: c.sub, fontSize: 14 }}>
+            {synlige.length} af {liste.length} notifikation{liste.length === 1 ? '' : 'er'}
+          </span>
+        )}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>Enzos proaktive nudges til William — historik over afsendte beskeder.</p>
 
@@ -85,17 +106,28 @@ export default function Notifikationer() {
       {!loading && !err && liste && (
         <>
           {liste.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}>
-              <FilterPill aktiv={filter === 'alle'} onClick={() => setFilter('alle')} tekst="Alle" antal={antal.alle} />
-              <FilterPill aktiv={filter === 'telegram'} onClick={() => setFilter('telegram')} tekst="Telegram" antal={antal.telegram} />
-              <FilterPill aktiv={filter === 'email'} onClick={() => setFilter('email')} tekst="Email" antal={antal.email} />
+            <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap', alignItems: 'center' }}>
+              <FilterPill aktiv={periode === '7'} onClick={() => setPeriode('7')} tekst="7 dage" antal={undefined} />
+              <FilterPill aktiv={periode === '30'} onClick={() => setPeriode('30')} tekst="30 dage" antal={undefined} />
+              <FilterPill aktiv={periode === 'alle'} onClick={() => setPeriode('alle')} tekst="Alt" antal={liste.length} />
+              {kanaler.length > 1 && (
+                <>
+                  <span style={{ width: 1, height: 20, background: c.line, margin: '0 4px' }} />
+                  <FilterPill aktiv={filter === 'alle'} onClick={() => setFilter('alle')} tekst="Alle kanaler" antal={iPeriode.length} />
+                  {kanaler.map(([k, n]) => (
+                    <FilterPill key={k} aktiv={filter === k} onClick={() => setFilter(k)} tekst={k === 'email' ? 'Email' : k} antal={n} />
+                  ))}
+                </>
+              )}
             </div>
           )}
 
           <div style={{ ...card, padding: 0, overflow: 'hidden', marginTop: liste.length > 0 ? 0 : 16 }}>
             {liste.length === 0 && <div style={{ padding: 20, color: c.sub }}>Ingen notifikationer endnu.</div>}
             {liste.length > 0 && synlige.length === 0 && (
-              <div style={{ padding: 20, color: c.sub }}>Ingen {filter === 'email' ? 'email' : 'telegram'}-notifikationer.</div>
+              <div style={{ padding: 20, color: c.sub }}>
+                Ingen notifikationer i perioden. Vælg “Alt” for at se hele historikken.
+              </div>
             )}
             {synlige.map((n, i) => (
               <div key={n.id} style={{ padding: '14px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>

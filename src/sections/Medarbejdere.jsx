@@ -6,7 +6,6 @@ import { Kort, StatusChip, Pilleknap, Dialog, TomTilstand } from '../komponenter
 const ONBOARD = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/medarbejder-onboard'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
-const timerFmt = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 1 })} t`
 
 // medarbejder_slet saetter onboarding_status='inaktiv'. Nyoprettede har ogsaa
 // active=false (de afventer invitation), saa vi maa IKKE bruge 'aktiv' til at
@@ -89,11 +88,20 @@ function MedarbejderKort({ m, onRediger, onFjern, onInviter, busy }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, borderTop: `1px solid ${c.line}`, paddingTop: 12 }}>
-        <Noegletal label="Timeløn" vaerdi={m.timeloen != null ? `${kr(m.timeloen)}/t` : '—'} />
-        <Noegletal label="Timer denne måned" vaerdi={timerFmt(m.timer_denne_maaned)} />
-        <Noegletal label="Løn denne måned" vaerdi={kr(m.loen_denne_maaned)} />
-        <Noegletal label="Kommende vagter" vaerdi={Number(m.kommende_vagter || 0)} />
+      {/* ÉT noegletal, ikke fire. Fire tal pr. kort gange 12 medarbejdere er 48
+          tal paa én skaerm — og timer/loen pr. maaned er Loen-sidens opgave, hvor
+          de staar i sammenhaeng og kan sammenlignes.
+          Her er spoergsmaalet et andet: hvem er ledig, og hvem har travlt?
+          Derfor kommende vagter, med timeloenen som sekundaer linje siden den
+          hoerer til personen frem for til maaneden. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, borderTop: `1px solid ${c.line}`, paddingTop: 12, flexWrap: 'wrap' }}>
+        <Noegletal
+          label="Kommende vagter"
+          vaerdi={Number(m.kommende_vagter || 0)}
+        />
+        <span style={{ fontSize: 13, color: c.sub, marginLeft: 'auto' }}>
+          {m.timeloen != null ? `${kr(m.timeloen)}/t` : 'Ingen timeløn sat'}
+        </span>
       </div>
 
       {!fjernet && (
