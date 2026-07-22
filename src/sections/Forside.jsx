@@ -188,6 +188,48 @@ const HUB_MAAL = {
   faktura_mangler: '/fakturaer',
 }
 
+
+// Hvem gjorde hvad — tre chefer deler systemet, og uden det arbejder de i blinde
+// paa hinanden. audit_log har eksisteret hele tiden, men actor_navn var null paa
+// naesten alt og blev aldrig vist. Nu udfylder en trigger navnet automatisk.
+function SenesteAktivitet() {
+  const [poster, setPoster] = useState(null)
+  const [fejl, setFejl] = useState('')
+
+  const hent = useCallback(() => {
+    supabase.rpc('aktivitet_liste', { p_antal: 8 }).then(({ data, error }) => {
+      if (error) { setFejl(error.message); return }
+      if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke hente aktiviteten.'); return }
+      setPoster(data.poster || [])
+    })
+  }, [])
+
+  useEffect(() => { hent() }, [hent])
+  useGenindlaes(hent)
+
+  // Skjul kortet helt naar der intet er sket. Et tomt "Seneste aktivitet" fylder
+  // uden at sige noget — og paa et nyt system er det tomt i dagevis.
+  if (fejl) return null
+  if (poster !== null && poster.length === 0) return null
+
+  return (
+    <div style={{ ...card, marginTop: sp(4) }}>
+      <div style={{ fontSize: 13, color: c.sub, fontWeight: 500, marginBottom: 10 }}>Seneste aktivitet</div>
+      {poster === null && <div style={{ color: c.sub, fontSize: 14 }}>Henter …</div>}
+      {poster && poster.map((p, i) => (
+        <div key={p.id} style={{ padding: '8px 0', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
+          <div style={{ fontSize: 13.5, color: c.ink }}>
+            <span style={{ fontWeight: 500 }}>{p.hvem}</span>{' '}
+            <span style={{ color: c.slate2 }}>{p.hvad}</span>
+            {p.detalje && <span style={{ color: c.slate2 }}> — {p.detalje}</span>}
+          </div>
+          <div style={{ fontSize: 11.5, color: c.sub, marginTop: 2 }}>{fmtDatoTid(p.hvornaar)}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function FraEnzo({ onAntal }) {
   const nav = useNavigate()
   const [poster, setPoster] = useState(null)
@@ -354,6 +396,7 @@ function AdminForside({ data, smal, onDataAendret }) {
     <div>
       <SpoergEnzo />
       <FraEnzo onAntal={paaAntal} />
+      <SenesteAktivitet />
     </div>
   )
 
