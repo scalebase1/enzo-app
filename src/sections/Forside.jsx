@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, btn, input, font, sp, tone } from '../ui.js'
 import { PROXY as ENZO_CHAT } from './Enzo.jsx'
 import { BookingDetalje, byggeEnhedFarver } from './Kalender.jsx'
@@ -192,10 +193,11 @@ function FraEnzo({ onAntal }) {
   const [poster, setPoster] = useState(null)
   const [fejl, setFejl] = useState('')
 
-  useEffect(() => {
-    let alive = true
+  // Traukket ud af useEffect, saa den kan kaldes igen naar fanen faar fokus.
+  // Indbakken er det sted tre chefer hurtigst kommer ud af sync: en post kan
+  // vaere handlet af en anden for et minut siden.
+  const hentIndbakke = useCallback(() => {
     supabase.rpc('hub_indbakke').then(({ data, error }) => {
-      if (!alive) return
       if (error) { setFejl(error.message); return }
       if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke hente indbakken.'); return }
       setPoster((data.poster || []).slice(0, 5))
@@ -203,8 +205,10 @@ function FraEnzo({ onAntal }) {
       // at hente hub_indbakke en gang til.
       if (onAntal && data.antal) onAntal(data.antal)
     })
-    return () => { alive = false }
   }, [onAntal])
+
+  useEffect(() => { hentIndbakke() }, [hentIndbakke])
+  useGenindlaes(hentIndbakke)
 
   return (
     <div style={{ ...card, marginTop: sp(4) }}>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, btn, btnGhost, input, font, sp } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
 import { tone } from '../ui.js'
@@ -312,6 +313,7 @@ export default function Kunder() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  useGenindlaes(load)
 
   // Efter en gemt aendring: opdatér liste + aaben profil lokalt (danske feltnavne matcher
   // kundeobjektet direkte), og genindlaes fra serveren saa data er autoritativt.

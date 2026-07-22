@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, input, sp, tone } from '../ui.js'
 import { Kort, StatusChip, Pilleknap, Segmentvaelger, Dialog, TomTilstand } from '../komponenter/index.jsx'
 import { MaanedsGrid, byggeEnhedFarver, UDEN_ENHED_FARVE } from './Kalender.jsx'
@@ -467,6 +468,8 @@ export default function Vogndrift() {
   }, [])
 
   useEffect(() => { load({ foerste: true }) }, [load])
+  // Uden foerste:true — genindlaesning maa ikke skjule listen mens den henter.
+  useGenindlaes(useCallback(() => { load(); loadKalender() }, [load, loadKalender]))
   useEffect(() => { loadKalender() }, [loadKalender])
 
   function fejlPaa(id, tekst) { setRadFejl((f) => ({ ...f, [id]: tekst })) }

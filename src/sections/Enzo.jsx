@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, btn, btnGhost, input, monoFont, sp } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
 
@@ -290,6 +291,8 @@ export default function Enzo() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  // Et forslag kan vaere godkendt eller afvist af en anden chef imens.
+  useGenindlaes(load)
 
   async function afgoer(f, beslutning) {
     setBusyId(f.id); setKvittering(null)

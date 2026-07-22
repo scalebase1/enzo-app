@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, btn, btnGhost, font, monoFont } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
 
@@ -102,6 +103,9 @@ export default function Fakturaer() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  // Tre chefer deler systemet: en faktura kan vaere udstedt eller sendt af en
+  // anden mens denne skaerm stod aaben.
+  useGenindlaes(load)
 
   const fakturaer = data?.fakturaer || []
   const manglende = data?.manglende || []

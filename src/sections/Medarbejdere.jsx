@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, input, sp, tone, radius } from '../ui.js'
 import { Kort, StatusChip, Pilleknap, Dialog, TomTilstand } from '../komponenter/index.jsx'
 
@@ -144,6 +145,8 @@ export default function Medarbejdere() {
   }, [])
 
   useEffect(() => { load({ foerste: true }) }, [load])
+  // Uden argument: genindlaesning maa ikke saette loading og skjule listen.
+  useGenindlaes(useCallback(() => load(), [load]))
 
   function tjek(data, error, fallback) {
     if (error) return menneskeligFejl(error.message, fallback)

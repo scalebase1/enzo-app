@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
+import { useGenindlaes } from '../hooks.js'
 import { c, card, input, sp, tone } from '../ui.js'
 import { Kort, StatusChip, Pilleknap, Segmentvaelger, Dialog, TomTilstand } from '../komponenter/index.jsx'
 import { KladdeKort, KladdeRediger, SendtVisning } from './Kladder.jsx'
@@ -569,6 +570,11 @@ export default function Kundekontakt() {
   }, [])
 
   useEffect(() => { hentHub() }, [hentHub])
+  // Vigtigst af alle sektioner for tre chefer: her godkendes bookinger og
+  // sendes svar. Alle fire kilder hentes samlet naar fanen faar fokus igen.
+  useGenindlaes(useCallback(() => {
+    hentHub(); hentLeads(leadFilter); hentKladder(); hentBookinger()
+  }, [hentHub, hentLeads, leadFilter, hentKladder, hentBookinger]))
   useEffect(() => { hentLeads(leadFilter) }, [hentLeads, leadFilter])
   useEffect(() => { hentKladder() }, [hentKladder])
   useEffect(() => { hentBookinger() }, [hentBookinger])
