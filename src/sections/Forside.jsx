@@ -123,7 +123,10 @@ function SpoergEnzo() {
 
     const sessionId = await hentSessionId(uid)
     const ctrl = new AbortController()
-    const t30 = setTimeout(() => ctrl.abort(), 30000)
+    // 60s, ikke 30: et statusspoergsmaal tager ~31s maalt i produktion
+    // (Enzo kalder hent_status og skriver derefter et fuldt overblik).
+    // 30s afbroed svaret MENS det var paa vej — det var fejlen William saa.
+    const t30 = setTimeout(() => ctrl.abort(), 60000)
     try {
       const res = await fetch(ENZO_CHAT, {
         method: 'POST',
@@ -144,7 +147,7 @@ function SpoergEnzo() {
       nav('/enzo')
     } catch (er) {
       clearTimeout(t30); setBusy(false)
-      setFejl(er && er.name === 'AbortError' ? 'Enzo svarede ikke i tide, prøv igen.' : 'Uventet fejl — prøv igen.')
+      setFejl(er && er.name === 'AbortError' ? 'Enzo brugte for lang tid. Prøv at spørge om noget mere afgrænset.' : 'Uventet fejl — prøv igen.')
     }
   }
 

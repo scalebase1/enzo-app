@@ -105,7 +105,10 @@ function EnzoChat({ onSvar, forslag = [], onAfgoer, busyId }) {
 
     setVenter(true)
     const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 30000)
+    // 60s, ikke 30: et statusspoergsmaal tager ~31s maalt i produktion
+    // (Enzo kalder hent_status og skriver derefter et fuldt overblik).
+    // 30s afbroed svaret MENS det var paa vej — det var fejlen William saa.
+    const timer = setTimeout(() => ctrl.abort(), 60000)
     try {
       const res = await fetch(PROXY, {
         method: 'POST',
@@ -125,7 +128,7 @@ function EnzoChat({ onSvar, forslag = [], onAfgoer, busyId }) {
       onSvar?.()
     } catch (er) {
       clearTimeout(timer); setVenter(false)
-      setChatFejl(er && er.name === 'AbortError' ? 'Enzo svarede ikke i tide, prøv igen.' : 'Uventet fejl — prøv igen.')
+      setChatFejl(er && er.name === 'AbortError' ? 'Enzo brugte for lang tid. Prøv at spørge om noget mere afgrænset.' : 'Uventet fejl — prøv igen.')
     }
   }
 
