@@ -128,9 +128,48 @@ function EnzoChat({ onSvar, forslag = [], onAfgoer, busyId }) {
       onSvar?.()
     } catch (er) {
       clearTimeout(timer); setVenter(false)
-      setChatFejl(er && er.name === 'AbortError' ? 'Enzo brugte for lang tid. Prøv at spørge om noget mere afgrænset.' : 'Uventet fejl — prøv igen.')
+      setChatFejl(er && er.name === 'AbortError' ? 'Enzo nåede ikke at svare færdig. Tjek panelet — forslag hun nåede at lave ligger klar. Spørg gerne om én ting ad gangen.' : 'Uventet fejl — prøv igen.')
     }
   }
+
+
+// Enzo skriver simpel markdown — systemprompten beder eksplicit om fed skrift og
+// punkttegn, fordi William skal kunne skimme et statusoverblik paa faa sekunder.
+// Uden rendering saa han de raa stjerner: "**7 ubesvarede henvendelser**".
+//
+// Bevidst minimal: kun **fed** og punkttegn. Ingen markdown-pakke, ingen
+// dangerouslySetInnerHTML — teksten kommer fra en sprogmodel, og alt bliver
+// derfor til React-noder frem for HTML.
+function fedTekst(linje, noegle) {
+  const dele = String(linje).split(/(\*\*[^*]+\*\*)/g)
+  return dele.map((d, i) =>
+    d.startsWith('**') && d.endsWith('**') && d.length > 4
+      ? <strong key={`${noegle}-${i}`} style={{ fontWeight: 600 }}>{d.slice(2, -2)}</strong>
+      : <span key={`${noegle}-${i}`}>{d}</span>,
+  )
+}
+
+function Markdown({ tekst }) {
+  const linjer = String(tekst || '').split('\n')
+  return (
+    <>
+      {linjer.map((l, i) => {
+        const punkt = /^\s*[-*•]\s+/.test(l)
+        const indhold = punkt ? l.replace(/^\s*[-*•]\s+/, '') : l
+        if (punkt) {
+          return (
+            <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <span aria-hidden style={{ flexShrink: 0 }}>•</span>
+              <span>{fedTekst(indhold, i)}</span>
+            </div>
+          )
+        }
+        if (!l.trim()) return <div key={i} style={{ height: 8 }} />
+        return <div key={i}>{fedTekst(l, i)}</div>
+      })}
+    </>
+  )
+}
 
   const boble = (m, i) => (
     <div key={i} style={{ display: 'flex', justifyContent: m.rolle === 'bruger' ? 'flex-end' : 'flex-start' }}>
@@ -147,7 +186,7 @@ function EnzoChat({ onSvar, forslag = [], onAfgoer, busyId }) {
             ? { background: c.blue, color: '#fff', borderBottomRightRadius: 4 }
             : { background: c.card, border: `1px solid ${c.line}`, color: c.text, borderBottomLeftRadius: 4 }) }}
       >
-        {m.tekst}
+        {m.rolle === 'bruger' ? m.tekst : <Markdown tekst={m.tekst} />}
       </div>
     </div>
   )

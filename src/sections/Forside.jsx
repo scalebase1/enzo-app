@@ -147,7 +147,7 @@ function SpoergEnzo() {
       nav('/enzo')
     } catch (er) {
       clearTimeout(t30); setBusy(false)
-      setFejl(er && er.name === 'AbortError' ? 'Enzo brugte for lang tid. Prøv at spørge om noget mere afgrænset.' : 'Uventet fejl — prøv igen.')
+      setFejl(er && er.name === 'AbortError' ? 'Enzo nåede ikke at svare færdig. Tjek panelet — forslag hun nåede at lave ligger klar. Spørg gerne om én ting ad gangen.' : 'Uventet fejl — prøv igen.')
     }
   }
 
