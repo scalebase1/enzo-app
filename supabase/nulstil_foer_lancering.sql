@@ -100,3 +100,28 @@ order by 1;
 commit;
 -- Noget ser forkert ud? Så:
 -- rollback;
+
+-- ---------------------------------------------------------------------------
+-- EFTERSKRIFT 22-07-2026, tilfoejet EFTER foerste koersel.
+--
+-- Dette script toemmer staff, men roerer IKKE auth.users. Det gav en fejl hos
+-- William foerste gang han oprettede en medarbejder efter nulstillingen:
+-- emailen havde allerede et login fra testperioden, invitationen kunne derfor
+-- ikke sendes, staff fik aldrig auth_user_id, og linket i mailen virkede ikke
+-- ("allerede oprettet").
+--
+-- Rodfixet ligger i edge functionen medarbejder-onboard, som nu GENBRUGER et
+-- eksisterende login og sender et nulstil-link i stedet for en invitation.
+-- Det virker uanset hvad der ligger i auth.users.
+--
+-- Vil man alligevel rydde forældreløse medarbejder-logins, kan det goeres
+-- herunder. KØR DET IKKE BLINDT — tjek listen foerst, og bevar altid
+-- admin-kontoen.
+--
+--   select u.email, u.created_at
+--   from auth.users u
+--   where u.raw_user_meta_data->>'rolle' = 'medarbejder'
+--     and not exists (select 1 from staff s where s.auth_user_id = u.id);
+--
+-- Sletning kraever service_role eller Supabase-dashboardet (Authentication →
+-- Users); auth.users kan ikke slettes fra en almindelig migration.
