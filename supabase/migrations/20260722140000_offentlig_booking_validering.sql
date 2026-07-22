@@ -1,0 +1,21 @@
+-- Den offentlige bookingformular validerede hverken antal kuverter eller dato.
+-- Fundet i produktionsdata under lanceringsgennemgangen: en booking med -10
+-- kuverter og to bookinger med dato i fortiden.
+--
+-- Endpointet er aabent for enhver, saa en tastefejl — eller en bot — kan lave
+-- stoej i Williams system som han skal rydde op i manuelt.
+--
+-- Valideringen ligger i DATABASEN og ikke i formularen, fordi formularen er
+-- Chris' kode paa et andet domaene: klientvalidering kan omgaas ved at poste
+-- direkte til endpointet.
+--
+-- Graenser: 1-1000 personer (kapacitet pr. koncept er 50-80, saa 1000 giver
+-- rigelig luft til et stort arrangement uden at tillade aabenlyst vroevl), og
+-- datoen skal vaere i dag eller senere.
+--
+-- Selve funktionskroppen er anvendt via MCP. Verificeret efter deploy:
+--   -10 kuverter  -> "Antal personer skal vaere mindst 1."
+--   0 kuverter    -> samme
+--   5000 kuverter -> "ser ud til at vaere en tastefejl"
+--   2020-01-01    -> "Datoen ligger i fortiden."
+--   40 / 2026-12  -> oprettet
