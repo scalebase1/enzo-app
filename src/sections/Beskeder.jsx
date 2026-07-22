@@ -88,13 +88,18 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', fontFamily: font, cursor: 'pointer', display: 'block',
-        background: valgt ? '#F2F1ED' : 'transparent', border: 'none',
-        borderLeft: valgt ? `3px solid ${c.blue}` : '3px solid transparent',
+        background: valgt ? '#F2F1ED' : (ulaeste > 0 ? '#FBFAF7' : 'transparent'), border: 'none',
+        borderLeft: valgt ? `3px solid ${c.blue}` : (ulaeste > 0 ? `3px solid ${c.blue}` : '3px solid transparent'),
         borderBottom: `1px solid ${c.line}`, padding: '12px 14px' }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: ulaeste > 0 ? 500 : 400, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {traad.emne}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          {ulaeste > 0 && (
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.blue, flexShrink: 0 }} />
+          )}
+          <div style={{ fontSize: 14, fontWeight: ulaeste > 0 ? 600 : 400, color: c.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {traad.emne}
+          </div>
         </div>
         {ulaeste > 0 && <UlaestBadge antal={ulaeste} />}
       </div>
@@ -108,6 +113,7 @@ function TraadLinje({ traad, valgt, erAdmin, onClick }) {
 
       <div style={{
         fontSize: 12.5, color: ulaeste > 0 ? c.ink : c.sub, marginTop: 4,
+        fontWeight: ulaeste > 0 ? 500 : 400,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {traad.seneste || 'Ingen beskeder endnu.'}
       </div>
@@ -498,9 +504,11 @@ function BeskederUI({ erAdmin }) {
     return data
   }, [])
 
-  // Kun medarbejdere har besked_status-raekker (William er ikke deltager og har
-  // altid ulaeste=0). RPC'en er idempotent og returnerer { ok:found } uden fejltekst,
-  // saa den bruges som stille housekeeping — ikke som en brugerhandling.
+  // Gaelder nu ALLE med en staff-raekke, ogsaa chefer: siden medarbejdere kan
+  // skrive til ledelsen, er en chef ogsaa modtager. Tidligere sprang admin over,
+  // og badgen ville derfor aldrig forsvinde igen.
+  // RPC'en er idempotent og returnerer { ok:found } uden fejltekst, saa den
+  // bruges som stille housekeeping — ikke som en brugerhandling.
   const markerLaest = useCallback(async (beskeder) => {
     const mine = (beskeder || []).filter((b) => !b.fra_mig)
     if (mine.length === 0) return
@@ -512,8 +520,8 @@ function BeskederUI({ erAdmin }) {
     setValgtId(t.id)
     setTraadData(null); setTraadFejl(''); setSvarTekst(''); setSvarFejl(''); setHandlingFejl({}); setKvittering('')
     const d = await loadTraad(t.id)
-    if (d && !erAdmin && (t.ulaeste || 0) > 0) markerLaest(d.beskeder)
-  }, [loadTraad, markerLaest, erAdmin])
+    if (d && (t.ulaeste || 0) > 0) markerLaest(d.beskeder)
+  }, [loadTraad, markerLaest])
 
   async function sendSvar() {
     const t = svarTekst.trim()
