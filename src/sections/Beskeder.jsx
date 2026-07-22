@@ -189,6 +189,122 @@ function VagtVaelger({ valgtVagt, onVaelg }) {
   )
 }
 
+
+// ---- Skriv til ledelsen (kun medarbejder) ----
+// Medarbejderen vaelger HVILKEN chef. Casa Food har tre, fordelt paa
+// koncepterne, saa én faelles "skriv til ledelsen"-kanal ville sende
+// sygemeldinger til folk det ikke vedkommer.
+function SkrivTilChef({ onClose, onSendt }) {
+  const [chefer, setChefer] = useState(null)
+  const [valgt, setValgt] = useState(null)
+  const [emne, setEmne] = useState('')
+  const [tekst, setTekst] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [fejl, setFejl] = useState('')
+
+  useEffect(() => {
+    supabase.rpc('chefer_liste').then(({ data, error }) => {
+      if (error) { setFejl(error.message); return }
+      if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke hente modtagere.'); return }
+      const liste = data.chefer || []
+      setChefer(liste)
+      if (liste.length === 1) setValgt(liste[0].staff_id)   // kun én: forvælg
+    })
+  }, [])
+
+  async function send() {
+    if (busy) return
+    if (!valgt) { setFejl('Vælg hvem beskeden skal til.'); return }
+    if (!tekst.trim()) { setFejl('Skriv en besked.'); return }
+    setBusy(true); setFejl('')
+    const { data, error } = await supabase.rpc('besked_til_chef', {
+      p_chef_staff_id: valgt, p_tekst: tekst.trim(), p_emne: emne.trim() || null,
+    })
+    setBusy(false)
+    if (error) { setFejl(error.message); return }
+    if (!data || data.ok === false) { setFejl(data?.fejl || 'Beskeden kunne ikke sendes.'); return }
+    onSendt(data.besked || 'Beskeden er sendt.')
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', zIndex:60,
+               display:'flex', alignItems:'flex-start', justifyContent:'center', padding:16, overflowY:'auto' }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ ...card, width:520, maxWidth:'100%', marginTop:48 }}>
+        <div style={{ fontSize:18, fontWeight:500, color:c.ink, marginBottom:4 }}>Skriv til ledelsen</div>
+        <div style={{ fontSize:12.5, color:c.sub, marginBottom:14 }}>
+          Fx en sygemelding, en ferieanmodning eller et spørgsmål til en vagt.
+        </div>
+
+        {chefer === null && !fejl && <div style={{ color:c.sub, fontSize:14 }}>Henter …</div>}
+
+        {chefer && chefer.length === 0 && (
+          <div style={{ fontSize:14, color:c.sub }}>
+            Der er ingen at skrive til lige nu. Kontakt din leder direkte.
+          </div>
+        )}
+
+        {chefer && chefer.length > 0 && (
+          <>
+            <div style={{ fontSize:13, color:c.sub, marginBottom:6 }}>Til</div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+              {chefer.map((ch) => (
+                <button
+                  key={ch.staff_id}
+                  onClick={() => { setValgt(ch.staff_id); setFejl('') }}
+                  style={{
+                    border:`1.5px solid ${valgt === ch.staff_id ? c.ink : c.line}`,
+                    background: valgt === ch.staff_id ? c.ink : c.card,
+                    color: valgt === ch.staff_id ? '#fff' : c.slate2,
+                    borderRadius:20, padding:'8px 16px', fontSize:14, fontWeight:500,
+                    cursor:'pointer', fontFamily:font, minHeight:44,
+                  }}
+                >
+                  {ch.navn}
+                </button>
+              ))}
+            </div>
+
+            <input
+              style={{ ...input, marginBottom:10 }}
+              value={emne}
+              onChange={(e) => setEmne(e.target.value)}
+              placeholder="Emne (valgfrit)"
+            />
+            <textarea
+              style={{ ...input, minHeight:120, resize:'vertical', marginBottom:12 }}
+              value={tekst}
+              onChange={(e) => setTekst(e.target.value)}
+              placeholder="Skriv din besked …"
+            />
+
+            {fejl && <div style={{ fontSize:13.5, color:c.red, marginBottom:10, whiteSpace:'pre-wrap' }}>{fejl}</div>}
+
+            <div style={{ display:'flex', gap:8 }}>
+              <button
+                onClick={send}
+                disabled={busy || !tekst.trim() || !valgt}
+                style={{ ...btn, minHeight:44,
+                         opacity:(busy || !tekst.trim() || !valgt) ? 0.6 : 1,
+                         cursor:(busy || !tekst.trim() || !valgt) ? 'default' : 'pointer' }}
+              >
+                {busy ? 'Sender …' : 'Send'}
+              </button>
+              <button onClick={onClose} style={{ ...btnGhost, minHeight:44 }}>Annuller</button>
+            </div>
+          </>
+        )}
+
+        {fejl && chefer === null && (
+          <div style={{ fontSize:13.5, color:c.red, marginTop:10, whiteSpace:'pre-wrap' }}>{fejl}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ---- Ny besked (kun admin) ----
 
 function NyBesked({ onClose, onSendt }) {
@@ -454,7 +570,7 @@ function BeskederUI({ erAdmin }) {
         {listeFejl && <div style={{ padding: '14px', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{listeFejl}</div>}
         {!listeLoading && !listeFejl && traade && traade.length === 0 && (
           <div style={{ padding: '14px', color: c.sub, fontSize: 14 }}>
-            {erAdmin ? 'Ingen samtaler endnu. Klik “Ny besked” for at skrive til dine medarbejdere.' : 'Du har ingen beskeder endnu.'}
+            {erAdmin ? 'Ingen samtaler endnu. Klik “Ny besked” for at skrive til dine medarbejdere.' : 'Du har ingen beskeder endnu. Klik “Skriv til ledelsen” hvis du har noget at melde.'}
           </div>
         )}
         {!listeFejl && (traade || []).map((t) => (
@@ -530,7 +646,9 @@ function BeskederUI({ erAdmin }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Personalebeskeder</h1>
-        {erAdmin && <button onClick={() => { setNyAaben(true); setKvittering('') }} style={btn}>Ny besked</button>}
+        {erAdmin
+          ? <button onClick={() => { setNyAaben(true); setKvittering('') }} style={btn}>Ny besked</button>
+          : <button onClick={() => { setNyAaben(true); setKvittering('') }} style={btn}>Skriv til ledelsen</button>}
       </div>
       <p style={{ color: c.sub, marginTop: 0 }}>
         {erAdmin
@@ -549,7 +667,9 @@ function BeskederUI({ erAdmin }) {
         {visTraad && traadPanel}
       </div>
 
-      {nyAaben && <NyBesked onClose={() => setNyAaben(false)} onSendt={nyBeskedSendt} />}
+      {nyAaben && (erAdmin
+        ? <NyBesked onClose={() => setNyAaben(false)} onSendt={nyBeskedSendt} />
+        : <SkrivTilChef onClose={() => setNyAaben(false)} onSendt={nyBeskedSendt} />)}
     </div>
   )
 }
