@@ -194,7 +194,7 @@ function KundeProfil({ kunde, onClose, onSaved }) {
         {/* Noegletal */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: sp(2), marginTop: 18 }}>
           <Noegletal label="Omsætning total" value={kr(kunde.omsaetning_total)} />
-          <Noegletal label="Antal events" value={kunde.antal_events ?? 0} />
+          <Noegletal label="Arrangementer" value={kunde.antal_events ?? 0} />
           <Noegletal label="Næste event" value={fmtDato(kunde.naeste_event)} />
           <Noegletal label="Sidste event" value={fmtDato(kunde.sidste_event)} />
         </div>
@@ -278,7 +278,7 @@ function KundeKort({ kunde, onClick }) {
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 14 }}>
         <div style={{ fontSize: 22, fontWeight: 500 }}>{kr(kunde.omsaetning_total)}</div>
-        <div style={{ fontSize: 13, color: c.slate2 }}>{kunde.antal_events ?? 0} event{kunde.antal_events === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: 13, color: c.slate2 }}>{kunde.antal_events ?? 0} arrangement{kunde.antal_events === 1 ? '' : 'er'}</div>
       </div>
 
       <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${c.line}`, fontSize: 12.5 }}>

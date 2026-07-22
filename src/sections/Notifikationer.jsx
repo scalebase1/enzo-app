@@ -45,6 +45,32 @@ function FilterPill({ aktiv, onClick, tekst, antal }) {
   )
 }
 
+// En notifikation kan indeholde en hel fakturatekst. Vist ubeskaaret fyldte én
+// post to skaermbilleder, og listen blev ulaeselig. Vi viser derfor de foerste
+// linjer og folder resten ud paa klik — teksten er stadig tilgaengelig, den
+// bestemmer bare ikke laengere hvor lang siden er.
+const KLIP = 180
+
+function Besked({ tekst }) {
+  const [aaben, setAaben] = useState(false)
+  const fuld = String(tekst || '')
+  const lang = fuld.length > KLIP
+  const vist = aaben || !lang ? fuld : fuld.slice(0, KLIP).trimEnd() + '…'
+  return (
+    <div>
+      <div style={{ fontSize: 14.5, lineHeight: 1.5, color: c.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{vist}</div>
+      {lang && (
+        <button
+          onClick={() => setAaben((v) => !v)}
+          style={{ border: 'none', background: 'transparent', padding: '4px 0 0', cursor: 'pointer', fontFamily: font, fontSize: 13, color: c.slate2, fontWeight: 500 }}
+        >
+          {aaben ? 'Vis mindre' : 'Vis hele beskeden'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Notifikationer() {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
@@ -131,7 +157,7 @@ export default function Notifikationer() {
             )}
             {synlige.map((n, i) => (
               <div key={n.id} style={{ padding: '14px 16px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none' }}>
-                <div style={{ fontSize: 14.5, lineHeight: 1.5, color: c.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.besked}</div>
+                <Besked tekst={n.besked} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                   <KanalBadge kanal={n.kanal} />
                   <StatusTekst status={n.status} tekst={n.status_tekst} />
