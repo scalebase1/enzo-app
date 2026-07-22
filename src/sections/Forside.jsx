@@ -54,9 +54,20 @@ function Koncepter({ liste }) {
   return <>{arr.map((k) => <Chip key={k} tekst={k} />)}</>
 }
 
-function Noegletal({ label, value, fremhaev }) {
+function Noegletal({ label, value, fremhaev, maal }) {
+  const nav = useNavigate()
+  const klikbar = !!maal && Number(value) > 0
   return (
-    <div style={{ ...card, padding: '14px 16px' }}>
+    <div
+      onClick={klikbar ? () => nav(maal) : undefined}
+      role={klikbar ? 'button' : undefined}
+      tabIndex={klikbar ? 0 : undefined}
+      onKeyDown={klikbar ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav(maal) } } : undefined}
+      style={{
+        ...card, padding: '14px 16px', minHeight: 44,
+        cursor: klikbar ? 'pointer' : 'default',
+      }}
+    >
       <div style={{ fontSize: 13, color: c.sub }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: fremhaev ? c.amber : c.ink }}>{value}</div>
     </div>
@@ -158,17 +169,22 @@ function SpoergEnzo() {
   )
 }
 
-// hub_indbakke-poster -> hvor foerer de hen. 'lead_*' har ingen sektion i appen.
-// Leads har nu en destination (hub'ens henvendelses-fane) — de var uklikbare
-// indtil Kundekontakt fandtes.
+// hub_indbakke-poster -> hvor foerer de hen. Hver posttype SKAL have en
+// destination: en post man ikke kan klikke paa er en paamindelse uden udvej.
 const HUB_MAAL = {
   kladde: '/kundekontakt?fane=kladder',
   lead_ny: '/kundekontakt?fane=henvendelser',
   lead_kold: '/kundekontakt?fane=henvendelser',
   booking_ny: '/kalender',
+  booking_ubemandet: '/kalender',
+  driftsdag_ubemandet: '/vogndrift',
+  timer_mangler_booking: '/loen',
+  timer_mangler_drift: '/vogndrift',
+  faktura_forfalden: '/fakturaer',
+  faktura_mangler: '/fakturaer',
 }
 
-function FraEnzo() {
+function FraEnzo({ onAntal }) {
   const nav = useNavigate()
   const [poster, setPoster] = useState(null)
   const [fejl, setFejl] = useState('')
@@ -180,9 +196,12 @@ function FraEnzo() {
       if (error) { setFejl(error.message); return }
       if (!data || data.ok === false) { setFejl(data?.fejl || 'Kunne ikke hente indbakken.'); return }
       setPoster((data.poster || []).slice(0, 5))
+      // Loeftes op til forsiden, saa noegletallene deler dette kald i stedet for
+      // at hente hub_indbakke en gang til.
+      if (onAntal && data.antal) onAntal(data.antal)
     })
     return () => { alive = false }
-  }, [])
+  }, [onAntal])
 
   return (
     <div style={{ ...card, marginTop: sp(4) }}>
@@ -221,7 +240,20 @@ function FraEnzo() {
 
 function AdminForside({ data, smal, onDataAendret }) {
   const arrangementer = Array.isArray(data.naeste_arrangementer) ? data.naeste_arrangementer : []
-  const skal = Number(data.skal_handles || 0)
+
+  // Tallene kommer fra hub_indbakke (loeftet op fra FraEnzo), IKKE fra
+  // forside_data.skal_handles. To konkurrerende taellinger af "hvad skal jeg
+  // goere nu" var praecis det problem der gav ét udifferentieret tal paa 16.
+  const [antal, setAntal] = useState(null)
+  const paaAntal = useCallback((a) => setAntal(a), [])
+
+  const grupper = antal ? [
+    { label: 'Bemanding', value: Number(antal.bemanding || 0), maal: '/vogndrift' },
+    { label: 'Svar kunder', value: Number(antal.svar_kunder || 0), maal: '/kundekontakt' },
+    { label: 'Timer', value: Number(antal.timer || 0), maal: '/loen' },
+    { label: 'Fakturaer', value: Number(antal.fakturaer || 0), maal: '/fakturaer' },
+  ] : []
+  const skal = grupper.reduce((s, g) => s + g.value, 0)
 
   // Bookingdetaljen er den samme komponent som i Kalender, og den kraever et
   // kalender_bookinger-formet objekt. forside_data giver kun et uddrag, saa vi
@@ -256,13 +288,23 @@ function AdminForside({ data, smal, onDataAendret }) {
     <div>
       <Hilsen
         navn={data.navn}
-        undertekst={skal > 0 ? `${data.maaned} — ${skal} ting kræver din handling` : data.maaned}
+        undertekst={
+          antal === null ? data.maaned
+            : skal > 0 ? `${data.maaned} — ${skal} ting kræver din handling`
+            : `${data.maaned} — alt er fulgt op`
+        }
       />
 
+      {/* Fire grupper frem for ét tal. Et samlet "16" fortaeller hvor meget der
+          venter, men ikke hvad — og saa skal William alligevel lede. Hver gruppe
+          foerer direkte til den sektion hvor arbejdet ligger.
+          Maanedens omsaetning er flyttet til Rapporter: den er en observation,
+          og forsiden skal pege mod handling. */}
       <div style={{ display: 'grid', gridTemplateColumns: smal ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(150px, 1fr))', gap: sp(3) }}>
-        <Noegletal label="Skal handles" value={skal} fremhaev={skal > 0} />
-        <Noegletal label="Månedens omsætning" value={kr(data.maanedens_omsaetning)} />
-        <Noegletal label="Kommende" value={arrangementer.length} />
+        {grupper.map((g) => (
+          <Noegletal key={g.label} label={g.label} value={g.value} fremhaev={g.value > 0} maal={g.maal} />
+        ))}
+        {antal === null && <Noegletal label="Skal handles" value="…" />}
       </div>
 
       <div style={{ marginTop: sp(6) }}>
@@ -304,7 +346,7 @@ function AdminForside({ data, smal, onDataAendret }) {
   const hoejre = (
     <div>
       <SpoergEnzo />
-      <FraEnzo />
+      <FraEnzo onAntal={paaAntal} />
     </div>
   )
 
