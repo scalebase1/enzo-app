@@ -17,6 +17,232 @@ function InaktivBadge() {
 // faktisk skifter vaerdi — i praksis 2 ved et enkelt ombyt.
 const RENUM = (i) => (i + 1) * 10
 
+// ---------------- Menu pr. koncept ----------------
+// Retterne her vises live paa casa-food.dk via menu-indtag. Raekkefoelgen
+// William saetter er den raekkefoelge kunderne ser.
+function MenuDialog({ koncept, onLuk }) {
+  const [retter, setRetter] = useState(null)
+  const [hentFejl, setHentFejl] = useState('')
+  const [fejl, setFejl] = useState('')
+  const [busy, setBusy] = useState(null)     // 'opret' | ret-id
+
+  const [nyNavn, setNyNavn] = useState('')
+  const [nyBesk, setNyBesk] = useState('')
+  const [redigerId, setRedigerId] = useState(null)
+  const [redNavn, setRedNavn] = useState('')
+  const [redBesk, setRedBesk] = useState('')
+  const [bekraeftSlet, setBekraeftSlet] = useState(null)
+
+  const load = useCallback(async () => {
+    setHentFejl('')
+    const { data, error } = await supabase.rpc('menu_liste')
+    if (error) { setHentFejl(error.message); return }
+    if (!data || data.ok === false) { setHentFejl(data?.fejl || 'Kunne ikke hente menuen.'); return }
+    const k = (data.koncepter || []).find((x) => x.madkoncept_id === koncept.id)
+    setRetter(k ? (k.retter || []) : [])
+  }, [koncept.id])
+
+  useEffect(() => { load() }, [load])
+
+  function tjek(data, error, fallback) {
+    if (error) return error.message
+    if (!data || data.ok === false) return data?.fejl || fallback
+    return null
+  }
+
+  async function opret() {
+    const navn = nyNavn.trim()
+    if (!navn || busy) return
+    setBusy('opret'); setFejl('')
+    const { data, error } = await supabase.rpc('menu_ret_opret', {
+      p_madkoncept_id: koncept.id, p_navn: navn, p_beskrivelse: nyBesk.trim() || null,
+    })
+    setBusy(null)
+    const f = tjek(data, error, 'Kunne ikke tilføje retten.')
+    if (f) { setFejl(f); return }
+    setNyNavn(''); setNyBesk('')
+    load()
+  }
+
+  async function gem(r) {
+    if (busy) return
+    const navn = redNavn.trim()
+    if (!navn) { setFejl('Retten skal have et navn.'); return }
+    setBusy(r.id); setFejl('')
+    // Beskrivelse sendes altid (ogsaa tom) saa William kan rydde den bevidst.
+    const { data, error } = await supabase.rpc('menu_ret_opdater', {
+      p_id: r.id, p_navn: navn, p_beskrivelse: redBesk.trim(),
+    })
+    setBusy(null)
+    const f = tjek(data, error, 'Kunne ikke gemme retten.')
+    if (f) { setFejl(f); return }
+    setRedigerId(null)
+    load()
+  }
+
+  async function slet(r) {
+    if (busy) return
+    setBusy(r.id); setFejl('')
+    const { data, error } = await supabase.rpc('menu_ret_slet', { p_id: r.id })
+    setBusy(null)
+    const f = tjek(data, error, 'Kunne ikke fjerne retten.')
+    if (f) { setFejl(f); return }
+    setBekraeftSlet(null)
+    load()
+  }
+
+  async function flyt(r, retning) {
+    if (busy) return
+    setBusy(r.id); setFejl('')
+    const { data, error } = await supabase.rpc('menu_ret_flyt', { p_id: r.id, p_retning: retning })
+    setBusy(null)
+    const f = tjek(data, error, 'Kunne ikke flytte retten.')
+    if (f) { setFejl(f); return }
+    load()
+  }
+
+  const antal = retter ? retter.length : 0
+
+  return (
+    <div
+      onClick={onLuk}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ ...card, width: 620, maxWidth: '100%', marginTop: 40, padding: 0, overflow: 'hidden' }}
+      >
+        <div style={{ padding: '16px 18px', borderBottom: `1px solid ${c.line}`, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 500, color: c.ink }}>Menu — {koncept.navn}</div>
+            <div style={{ fontSize: 12.5, color: c.sub, marginTop: 3 }}>
+              Retterne vises på hjemmesiden i den rækkefølge de står her.
+              {!koncept.aktiv && ' Konceptet er deaktiveret, så menuen vises ikke lige nu.'}
+            </div>
+          </div>
+          <button onClick={onLuk} style={{ ...btnGhost, padding: '6px 10px', fontSize: 16, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${c.line}` }}>
+          <input
+            style={{ ...input, marginBottom: 8 }}
+            value={nyNavn}
+            onChange={(e) => setNyNavn(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') opret() }}
+            placeholder="Rettens navn, fx “Margherita”"
+          />
+          <input
+            style={{ ...input, marginBottom: 8 }}
+            value={nyBesk}
+            onChange={(e) => setNyBesk(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') opret() }}
+            placeholder="Beskrivelse (valgfri), fx “San Marzano, fior di latte, basilikum”"
+          />
+          <button
+            style={{ ...btn, opacity: (busy || !nyNavn.trim()) ? 0.6 : 1, cursor: (busy || !nyNavn.trim()) ? 'default' : 'pointer' }}
+            disabled={!!busy || !nyNavn.trim()}
+            onClick={opret}
+          >
+            {busy === 'opret' ? 'Tilføjer …' : 'Tilføj ret'}
+          </button>
+        </div>
+
+        {fejl && (
+          <div style={{ margin: '12px 18px 0', padding: '10px 14px', borderRadius: 10, background: tone.fejl.bg, border: `1px solid ${tone.fejl.col}33`, color: tone.fejl.col, fontSize: 14, whiteSpace: 'pre-wrap' }}>
+            {fejl}
+          </div>
+        )}
+        {hentFejl && (
+          <div style={{ margin: '12px 18px', color: c.red, fontSize: 14, whiteSpace: 'pre-wrap' }}>{hentFejl}</div>
+        )}
+
+        {retter === null && !hentFejl && <div style={{ padding: '16px 18px', color: c.sub }}>Henter menuen …</div>}
+
+        {retter && antal === 0 && (
+          <div style={{ padding: '16px 18px' }}>
+            <div style={{ padding: '16px 18px', border: `1px dashed ${c.line}`, borderRadius: 12, color: c.sub, fontSize: 15 }}>
+              Ingen retter endnu. Tilføj den første ovenfor — så dukker menuen op på hjemmesiden.
+            </div>
+          </div>
+        )}
+
+        {retter && antal > 0 && (
+          <div>
+            {retter.map((r, i) => {
+              const rowBusy = busy === r.id
+              return (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 18px', borderTop: i > 0 ? `1px solid ${c.line}` : 'none', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
+                    <button
+                      onClick={() => flyt(r, 'op')}
+                      disabled={!!busy || i === 0}
+                      title="Flyt op"
+                      style={{ border: `1px solid ${c.line}`, background: '#fff', borderRadius: 5, width: 24, height: 18, lineHeight: 1, fontSize: 11, color: c.slate2, cursor: (busy || i === 0) ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1, padding: 0 }}
+                    >▲</button>
+                    <button
+                      onClick={() => flyt(r, 'ned')}
+                      disabled={!!busy || i === antal - 1}
+                      title="Flyt ned"
+                      style={{ border: `1px solid ${c.line}`, background: '#fff', borderRadius: 5, width: 24, height: 18, lineHeight: 1, fontSize: 11, color: c.slate2, cursor: (busy || i === antal - 1) ? 'default' : 'pointer', opacity: i === antal - 1 ? 0.35 : 1, padding: 0 }}
+                    >▼</button>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    {redigerId === r.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input style={{ ...input, marginBottom: 0 }} value={redNavn} onChange={(e) => setRedNavn(e.target.value)} autoFocus />
+                        <input style={{ ...input, marginBottom: 0 }} value={redBesk} onChange={(e) => setRedBesk(e.target.value)} placeholder="Beskrivelse (valgfri)" />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button style={{ ...btn, padding: '8px 12px', opacity: rowBusy ? 0.6 : 1 }} disabled={rowBusy} onClick={() => gem(r)}>
+                            {rowBusy ? 'Gemmer …' : 'Gem'}
+                          </button>
+                          <button style={{ ...btnGhost, padding: '8px 12px' }} disabled={rowBusy} onClick={() => { setRedigerId(null); setFejl('') }}>Annuller</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>{r.navn}</div>
+                        {r.beskrivelse && <div style={{ fontSize: 13, color: c.sub, marginTop: 2 }}>{r.beskrivelse}</div>}
+                      </>
+                    )}
+                  </div>
+
+                  {redigerId !== r.id && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        style={{ ...btnGhost, padding: '7px 11px', fontSize: 13, opacity: busy ? 0.6 : 1 }}
+                        disabled={!!busy}
+                        onClick={() => { setRedigerId(r.id); setRedNavn(r.navn); setRedBesk(r.beskrivelse || ''); setFejl('') }}
+                      >Ret</button>
+                      {bekraeftSlet === r.id ? (
+                        <>
+                          <button style={{ ...btn, background: c.red, padding: '7px 11px', fontSize: 13, opacity: rowBusy ? 0.6 : 1 }} disabled={rowBusy} onClick={() => slet(r)}>
+                            {rowBusy ? 'Fjerner …' : 'Ja, fjern'}
+                          </button>
+                          <button style={{ ...btnGhost, padding: '7px 11px', fontSize: 13 }} disabled={rowBusy} onClick={() => setBekraeftSlet(null)}>Fortryd</button>
+                        </>
+                      ) : (
+                        <button
+                          style={{ ...btnGhost, padding: '7px 11px', fontSize: 13, color: c.red, opacity: busy ? 0.6 : 1 }}
+                          disabled={!!busy}
+                          onClick={() => { setBekraeftSlet(r.id); setFejl('') }}
+                        >Fjern</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Madkoncepter() {
   const [koncepter, setKoncepter] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -30,6 +256,7 @@ export default function Madkoncepter() {
   const [busy, setBusy] = useState(null)      // 'opret' | koncept-id
   const [fejl, setFejl] = useState('')        // backendens tekst, ORDRET
   const [kvittering, setKvittering] = useState('')
+  const [menuFor, setMenuFor] = useState(null) // koncept hvis menu redigeres
 
   // Genindlaesning maa ikke skjule listen (loading gater kun foerste hentning),
   // ellers forsvinder og genopstaar raekkerne ved hver flytning.
@@ -247,6 +474,16 @@ export default function Madkoncepter() {
                   {/* Handlinger */}
                   {redigerId !== k.id && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {/* Menuen er det William retter oftest — den staar foerst. */}
+                      <button
+                        style={{ ...btnGhost, padding: '7px 11px', fontSize: 13, opacity: busy ? 0.6 : 1 }}
+                        disabled={!!busy}
+                        onClick={() => { setMenuFor(k); setFejl('') }}
+                        title="Retter der vises på hjemmesiden"
+                      >
+                        Menu{(k.antal_retter || 0) > 0 ? ` (${k.antal_retter})` : ''}
+                      </button>
+
                       <button
                         style={{ ...btnGhost, padding: '7px 11px', fontSize: 13, opacity: busy ? 0.6 : 1 }}
                         disabled={!!busy}
@@ -298,7 +535,15 @@ export default function Madkoncepter() {
       {!loading && !hentFejl && antal > 0 && (
         <div style={{ fontSize: 12.5, color: c.sub, marginTop: 10 }}>
           Koncepter der bruges af bookinger kan ikke slettes — deaktivér dem i stedet, så bevares historikken.
+          Menuerne under “Menu” vises live på hjemmesiden.
         </div>
+      )}
+
+      {menuFor && (
+        <MenuDialog
+          koncept={menuFor}
+          onLuk={() => { setMenuFor(null); load() }}
+        />
       )}
     </div>
   )
