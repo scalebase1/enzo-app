@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../supabaseClient.js'
+import { supabase, SUPABASE_ANON } from '../supabaseClient.js'
 import { c, card, btn, btnGhost, font, monoFont } from '../ui.js'
 import { StatusChip } from '../komponenter/index.jsx'
+
+// Edge function der danner fakturaen som PDF og lægger den i storage.
+const PDF_ENDPOINT = 'https://vakumjnnmfyqkcoxqcra.supabase.co/functions/v1/faktura-pdf'
 
 const kr = (n) => `${Number(n || 0).toLocaleString('da-DK', { maximumFractionDigits: 0 })} kr`
 const fmtDato = (iso) => {
@@ -161,6 +164,39 @@ export default function Fakturaer() {
     (res) => res.besked || `Faktura ${res.fakturanummer} sendt til ${res.modtager}.`,
   )
 
+  // PDF: edge functionen danner bilaget, lægger det i storage og returnerer et
+  // signeret link. Vi åbner det i en ny fane frem for at downloade — William vil
+  // typisk se den efter, ikke gemme den.
+  async function hentPdf(f) {
+    if (laast) return
+    setBusyId(`pdf:${f.id}`); setHandlingFejl(''); setKvittering(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const tok = sess.session?.access_token
+      if (!tok) { setBusyId(null); setHandlingFejl('Session udløbet — genindlæs siden.'); return }
+
+      const res = await fetch(PDF_ENDPOINT, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faktura_id: f.id }),
+      })
+      const d = await res.json().catch(() => null)
+      setBusyId(null)
+
+      // Backendens tekst ORDRET — den forklarer fx manglende adresse præcist.
+      if (!res.ok || !d || d.ok === false) {
+        setHandlingFejl(d?.fejl || `Kunne ikke danne PDF (${res.status}).`)
+        return
+      }
+      window.open(d.url, '_blank', 'noopener')
+      setKvittering(`PDF dannet for faktura ${d.fakturanummer}.`)
+      load()
+    } catch {
+      setBusyId(null)
+      setHandlingFejl('Uventet fejl ved dannelse af PDF — prøv igen.')
+    }
+  }
+
   // Forhåndsvis: kald faktura_tekst (sender INTET), vis resultatet i en dialog.
   async function forhaandsvis(f) {
     setPreview({ id: f.id, kunde: f.kunde, loading: true, res: null, fejl: '' })
@@ -256,15 +292,23 @@ export default function Fakturaer() {
                       {f.status === 'udstedt' && (
                         <>
                           <button style={{ ...btnGhost, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => forhaandsvis(f)}>Forhåndsvis</button>
+                          <button style={{ ...btnGhost, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => hentPdf(f)}>
+                            {busyId === `pdf:${f.id}` ? 'Danner …' : 'PDF'}
+                          </button>
                           <button style={{ ...btn, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => send(f)}>
                             {busyId === `send:${f.id}` ? 'Sender …' : 'Send faktura'}
                           </button>
                         </>
                       )}
                       {f.status === 'sendt' && (
-                        <button style={{ ...btn, background: c.green, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => markerBetalt(f)}>
-                          {busyId === `betalt:${f.id}` ? '…' : 'Markér betalt'}
-                        </button>
+                        <>
+                          <button style={{ ...btnGhost, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => hentPdf(f)}>
+                            {busyId === `pdf:${f.id}` ? 'Danner …' : 'PDF'}
+                          </button>
+                          <button style={{ ...btn, padding: '7px 12px', opacity: laast ? 0.6 : 1 }} disabled={laast} onClick={() => markerBetalt(f)}>
+                            {busyId === `betalt:${f.id}` ? '…' : 'Markér betalt'}
+                          </button>
+                        </>
                       )}
                       {f.status === 'betalt' && <span style={{ fontSize: 13, color: c.slate2, alignSelf: 'center' }}>✓ Færdig</span>}
                     </div>
