@@ -6,7 +6,7 @@ import { Kort, StatusChip, Pilleknap, Segmentvaelger, Dialog, TomTilstand } from
 import { KladdeKort, KladdeRediger, SendtVisning } from './Kladder.jsx'
 import { BookingDetalje, byggeEnhedFarver } from './Kalender.jsx'
 
-const FANER = { handles: 'handles', henvendelser: 'henvendelser', kladder: 'kladder' }
+const FANER = { handles: 'handles', bookinger: 'bookinger', henvendelser: 'henvendelser', kladder: 'kladder' }
 
 const dageSiden = (n) => {
   const d = Number(n)
@@ -74,6 +74,106 @@ function Felt({ label, multiline, hjaelp, ...rest }) {
 }
 
 // ---------------- Fane 1: Skal handles ----------------
+
+// Bookinger der venter paa godkendelse.
+//
+// HVORFOR EN EGEN FANE: "Skal handles" viser generiske kort — titel, undertekst,
+// handling. For en booking blev det til "23/07 2026 — 40 kuverter", og William
+// kunne dermed IKKE se hvad kunden faktisk vil have bestilt uden at klikke
+// videre. Det var hovedklagen i UX-gennemgangen: kortet skal vise hvad kunden
+// vil booke.
+//
+// kundekontakt_bookinger leverer allerede alt — koncepter, kundens egne ord,
+// hvad der mangler, kontaktinfo og tilknyttede kladder — men blev aldrig taget
+// i brug af frontenden.
+const DATO_LANG = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+
+function MangelChip({ felt }) {
+  const tekst = { pris: 'Mangler pris', adresse: 'Mangler adresse', bemanding: 'Mangler bemanding' }[felt] || `Mangler ${felt}`
+  return <StatusChip tekst={tekst} farve={tone.advarsel} />
+}
+
+function BookingKort({ b, onAabn }) {
+  const dage = Number(b.dage_til_event)
+  const naert = Number.isFinite(dage) && dage <= 7
+  const dato = b.dato ? new Date(b.dato) : null
+  const mangler = Array.isArray(b.mangler) ? b.mangler : []
+  const koncepter = Array.isArray(b.koncepter) ? b.koncepter.filter(Boolean) : []
+  const kladder = Array.isArray(b.kladder) ? b.kladder : []
+
+  return (
+    <Kort style={naert ? { borderLeft: `3px solid ${tone.fejl.col}` } : undefined}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 16, fontWeight: 500, color: c.ink, overflowWrap: 'anywhere' }}>{b.kunde || 'Ny booking'}</span>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {b.kendt_kunde && Number(b.tidligere_events) > 0 && (
+            <StatusChip tekst={`${b.tidligere_events} tidligere`} farve={tone.ok} />
+          )}
+          <StatusChip tekst={b.status_tekst || b.status} farve={tone.neutral} />
+        </div>
+      </div>
+
+      {/* HVAD KUNDEN VIL HAVE — det vigtigste paa kortet, derfor foerst og stoerst */}
+      <div style={{ fontSize: 15, color: c.ink, marginTop: 8, lineHeight: 1.5 }}>
+        {koncepter.length > 0 ? koncepter.join(', ') : 'Ingen koncepter valgt'}
+        {Number.isFinite(Number(b.kuverter)) && ` · ${b.kuverter} kuverter`}
+      </div>
+
+      <div style={{ fontSize: 14, color: c.sub, marginTop: 4 }}>
+        {dato && !isNaN(dato) ? dato.toLocaleDateString('da-DK', DATO_LANG) : 'Dato mangler'}
+        {Number.isFinite(dage) && ` — ${dage === 0 ? 'i dag' : dage === 1 ? 'i morgen' : dage < 0 ? `for ${Math.abs(dage)} dage siden` : `om ${dage} dage`}`}
+      </div>
+
+      {/* Kundens egne ord staar i citat — de siger tit mere end felterne */}
+      {b.kundens_kommentar && (
+        <div style={{
+          fontSize: 14, color: c.ink, marginTop: 10, padding: '8px 12px',
+          borderLeft: `2px solid ${c.line}`, background: '#00000005', lineHeight: 1.5, overflowWrap: 'anywhere',
+        }}>
+          “{b.kundens_kommentar}”
+        </div>
+      )}
+
+      {(b.email || b.telefon || b.kontaktperson) && (
+        <div style={{ fontSize: 13, color: c.sub, marginTop: 8, overflowWrap: 'anywhere' }}>
+          {[b.kontaktperson, b.email, b.telefon].filter(Boolean).join(' · ')}
+        </div>
+      )}
+
+      {(mangler.length > 0 || kladder.length > 0) && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          {mangler.map((m) => <MangelChip key={m} felt={m} />)}
+          {kladder.map((k) => (
+            <StatusChip key={k.id} tekst={`Kladde: ${k.status_tekst || k.status}`} farve={tone.neutral} />
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        <Pilleknap lille onClick={() => onAabn(b.booking_id)}>Godkend og prissæt</Pilleknap>
+        <span style={{ fontSize: 13, color: c.sub }}>{dageSiden(b.dage_siden_modtaget)}</span>
+      </div>
+    </Kort>
+  )
+}
+
+function Bookinger({ data, fejl, onAabnBooking }) {
+  if (fejl) return <div style={{ ...card, color: c.red, whiteSpace: 'pre-wrap' }}>{fejl}</div>
+  if (!data) return <div style={{ ...card, color: c.sub }}>Henter …</div>
+
+  const liste = Array.isArray(data.bookinger) ? data.bookinger : []
+  if (liste.length === 0) {
+    return <TomTilstand tekst="Ingen bookinger venter på godkendelse." />
+  }
+
+  // Backend sorterer efter dage til arrangementet — den der er taettest paa
+  // ligger oeverst. Raekkefoelgen bevares.
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: sp(3) }}>
+      {liste.map((b) => <BookingKort key={b.booking_id} b={b} onAabn={onAabnBooking} />)}
+    </div>
+  )
+}
 
 function SkalHandles({ data, fejl, onAabnLead, onAabnKladde, onAabnBooking }) {
   if (fejl) return <div style={{ ...card, color: c.red, whiteSpace: 'pre-wrap' }}>{fejl}</div>
@@ -413,6 +513,9 @@ export default function Kundekontakt() {
   const [kladder, setKladder] = useState(null)
   const [kladdeFejl, setKladdeFejl] = useState('')
 
+  const [bookinger, setBookinger] = useState(null)
+  const [bookingFejl, setBookingFejl] = useState('')
+
   const [kvittering, setKvittering] = useState('')
 
   // Dialoger
@@ -437,6 +540,16 @@ export default function Kundekontakt() {
     setHub(data)
   }, [])
 
+  // kundekontakt_bookinger giver de rige felter (koncepter, kundens ord, mangler)
+  // som hub_indbakke ikke baerer. p_kun_nye=true: kun dem der venter godkendelse.
+  const hentBookinger = useCallback(async () => {
+    setBookingFejl('')
+    const { data, error } = await supabase.rpc('kundekontakt_bookinger', { p_kun_nye: true })
+    const f = tjek(data, error, 'Kunne ikke hente bookinger.')
+    if (f) { setBookingFejl(f); return }
+    setBookinger(data)
+  }, [])
+
   const hentLeads = useCallback(async (status) => {
     setLeadFejl('')
     const args = status && status !== 'alle' ? { p_status: status } : {}
@@ -458,6 +571,7 @@ export default function Kundekontakt() {
   useEffect(() => { hentHub() }, [hentHub])
   useEffect(() => { hentLeads(leadFilter) }, [hentLeads, leadFilter])
   useEffect(() => { hentKladder() }, [hentKladder])
+  useEffect(() => { hentBookinger() }, [hentBookinger])
   useEffect(() => {
     let alive = true
     supabase.rpc('enheder_liste').then(({ data, error }) => {
@@ -467,7 +581,7 @@ export default function Kundekontakt() {
     return () => { alive = false }
   }, [])
 
-  function altOpdater() { hentHub(); hentLeads(leadFilter); hentKladder() }
+  function altOpdater() { hentHub(); hentLeads(leadFilter); hentKladder(); hentBookinger() }
 
   useEffect(() => {
     if (!venterLead || !leads) return
@@ -500,8 +614,11 @@ export default function Kundekontakt() {
     const venter = Number(hub?.poster?.length || 0)
     const alleLeads = Object.values(antalPrStatus || {}).reduce((a, b) => a + Number(b || 0), 0)
     const klarKladder = (kladder || []).filter((k) => k.status === 'klar').length
+    // Taelleren kommer fra backend saa den er sand selv foer listen er hentet.
+    const nyeBookinger = Number(bookinger?.antal_nye || 0)
     return [
       { key: FANER.handles, label: venter > 0 ? `Skal handles (${venter})` : 'Skal handles' },
+      { key: FANER.bookinger, label: `Bookinger (${nyeBookinger})` },
       { key: FANER.henvendelser, label: `Henvendelser (${alleLeads})` },
       { key: FANER.kladder, label: `Kladder (${klarKladder})` },
     ]
@@ -543,6 +660,10 @@ export default function Kundekontakt() {
             }}
             onAabnBooking={aabnBooking}
           />
+        )}
+
+        {fane === FANER.bookinger && (
+          <Bookinger data={bookinger} fejl={bookingFejl} onAabnBooking={aabnBooking} />
         )}
 
         {fane === FANER.henvendelser && (
